@@ -27,7 +27,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config("SECRET_KEY", default='django-insecure-n)23@bp=w5#v&4og%)(piv1r(iurp_coai9gzp=m9pb4_u)_(^')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config("DEBUG", default=True, cast=bool)
+DEBUG = config("DEBUG", default=False, cast=bool)
 
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="*", cast=lambda v: v.split(","))
 
@@ -75,6 +75,10 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
 ]
+
+# --- STATIC FILES (WHITENOISE) ---
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 
 ROOT_URLCONF = 'core.urls'
 
@@ -158,7 +162,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # --------------------------------------------------------------------------
 CORS_ALLOWED_ORIGINS = config(
     "CORS_ALLOWED_ORIGINS",
-    default="http://localhost:9000,http://127.0.0.1:9000",
+    default="https://localhost,http://localhost:8000,http://127.0.0.1:8000",
     cast=lambda v: v.split(",")
 )
 CORS_ALLOW_CREDENTIALS = True
@@ -168,7 +172,7 @@ CORS_ALLOW_CREDENTIALS = True
 # --------------------------------------------------------------------------
 CSRF_TRUSTED_ORIGINS = config(
     "CSRF_TRUSTED_ORIGINS",
-    default="http://localhost:9000,http://127.0.0.1:9000",
+    default="https://localhost,http://localhost:8000,http://127.0.0.1:8000,https://teliga-backend.onrender.com",
     cast=lambda v: v.split(",")
 )
 
