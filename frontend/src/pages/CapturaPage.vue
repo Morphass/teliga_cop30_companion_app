@@ -41,9 +41,15 @@
                 </span>
               </template>
             </q-btn>
-
-            <!-- Mantém o botão Conversar -->
-            <q-btn label="Conversar" color="green" icon="chat" @click="abrirConversa" class="full-width q-mb-sm" />
+            <q-btn
+              label="Conversar"
+              color="green"
+              icon="chat"
+              class="full-width q-mb-sm"
+              @click="abrirConversa"
+              :disable="conversaUsada"
+              :class="{ 'bg-grey-5': conversaUsada }"
+            />
           </div>
         </q-card-section>
       </q-card-section>
@@ -111,7 +117,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
@@ -136,35 +142,63 @@ const mostrarDialogo = ref(false)
 const questao = ref(null)
 const resultado = ref(null)
 const opcoes = ref({})
+const conversaUsada = ref(false)
 
-onMounted(async () => {
-  const itemId = route.params.id
-  if (itemId) {
-    // busca item e progresso
-    const [resItem, resCaptura] = await Promise.all([
+/* ============================
+      FUNÇÃO load()
+============================= */
+async function load(itemId) {
+  try {
+    const [resItem, resProgresso] = await Promise.all([
       api.get(`/api/item/${itemId}/`),
-      api.get(`/api/captura/${itemId}/`)
+      api.get(`/api/captura/${itemId}/`) // <-- CORRETO
     ])
-    item.value = resItem.data
-    chance.value = resCaptura.data.chance
 
-    // busca habilidades aplicáveis para este usuário e item
+    item.value = resItem.data
+    chance.value = resProgresso.data.chance
+    conversaUsada.value = !!resProgresso.data.conversa_usada
+
+    // Busca habilidades
     try {
       const resHabs = await api.get(`/api/habilidades/${itemId}/habilidades/`)
       habilidades.value = resHabs.data
     } catch (err) {
-      console.warn('Erro ao buscar habilidades', err)
       habilidades.value = []
+      console.warn("Erro ao buscar habilidades", err)
     }
+
+  } catch (e) {
+    console.error("Erro ao carregar item:", e)
+    $q.notify({ type: 'negative', message: 'Erro ao carregar dados do item.' })
   }
+}
+
+/* ============================
+  Carrega ao entrar na página
+============================= */
+onMounted(() => {
+  const itemId = route.params.id
+  if (itemId) load(itemId)
 })
 
-/** Executa habilidade (chama backend) */
+/* ============================
+  Recarrega quando trocar de item
+============================= */
+watch(() => route.params.id, (newId) => {
+  if (newId) load(newId)
+})
+
+/* ============================
+      EXECUTAR HABILIDADE
+============================= */
 async function executarAcao(habilidade_id) {
   try {
     const itemId = route.params.id
     const res = await api.post(`/api/captura/${itemId}/`, { habilidade_id })
-    if (res.data.chance !== undefined) chance.value = res.data.chance
+
+    if (res.data.chance !== undefined) {
+      chance.value = res.data.chance
+    }
 
     if (res.data.habilidade) {
       const h = res.data.habilidade
@@ -177,28 +211,30 @@ async function executarAcao(habilidade_id) {
   }
 }
 
-/** Usa habilidade */
+/* ============================
+        USAR HABILIDADE
+============================= */
 async function usarHabilidade(h) {
   if (h.quantidade === 0) {
     $q.notify({ type: 'negative', message: 'Sem usos restantes dessa habilidade.' })
     return
   }
 
-  // tocar som se existir
   if (h.som) {
     const a = new Audio(h.som)
-    a.play().catch(()=>{})
+    a.play().catch(() => {})
   }
 
-  // animação customizada (se desejar)
   if (h.animacao) {
-    // Exemplo: if (h.nome.toLowerCase().includes('ovo')) { mostrarOvo.value = true; setTimeout(()=>mostrarOvo.value=false,1000) }
+    // Exemplo de animação
   }
 
   await executarAcao(h.id)
 }
 
-/** Capturar */
+/* ============================
+          CAPTURAR
+============================= */
 async function capturar() {
   try {
     const itemId = route.params.id
@@ -211,31 +247,60 @@ async function capturar() {
   }
 }
 
-/** Conversar */
+/* ============================
+          CONVERSAR
+============================= */
 async function abrirConversa() {
+  if (conversaUsada.value) {
+    $q.notify({ type: 'warning', message: 'Você já conversou com este item.' })
+    return
+  }
+
   try {
     const itemId = route.params.id
-    const res = await api.get(`/api/questao/item/${itemId}/`)
+    const res = await api.get(`/api/questao/item/${itemId}/`) // <-- CORRETO: pega a pergunta
+
     questao.value = res.data
     opcoes.value = {
       A: res.data.escolha_a,
       B: res.data.escolha_b,
       C: res.data.escolha_c
     }
+
     mostrarDialogo.value = true
     resultado.value = null
+
   } catch (err) {
     console.error(err)
     $q.notify({ type: 'negative', message: 'Erro ao buscar questão' })
   }
 }
 
-/** Responder pergunta */
+/* ============================
+        RESPONDER QUESTÃO
+============================= */
 async function responder(letra) {
   try {
-    const res = await api.post(`/api/questao/${questao.value.id}/`, { resposta: letra })
+    const res = await api.post(`/api/questao/${questao.value.id}/`, {
+      resposta: letra
+    })
+
     resultado.value = res.data
+
+    if (res.data.chance !== undefined && res.data.chance !== null) {
+      chance.value = res.data.chance
+    }
+
+    conversaUsada.value = true // trava o botão conversar
+
   } catch (err) {
+    if (err.response?.data?.error === "Você já conversou com este item.") {
+      conversaUsada.value = true
+      mostrarDialogo.value = false
+      $q.notify({ type: "warning", message: "Você já conversou com este item." })
+      return
+    }
+
     console.error(err)
     $q.notify({ type: 'negative', message: 'Erro ao enviar resposta' })
   }

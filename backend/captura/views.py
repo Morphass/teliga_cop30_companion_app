@@ -11,7 +11,7 @@ from django.shortcuts import get_object_or_404
 from item.models import Item
 from .serializers import (
     MochilaItemSerializer, MochilaEventoSerializer, MochilaPocaoSerializer,
-    ConversaQuestoesSerializer, RespostaSerializer
+    ConversaQuestoesSerializer, RespostaSerializer, CapturaProgressoSerializer
 )
 
 
@@ -80,21 +80,57 @@ class QuestaoView(views.APIView):
 
     @extend_schema(responses=ConversaQuestoesSerializer)
     def get(self, request, pk):
-        questao = get_object_or_404(ConversaQuestoes, pk=pk)
-        serializer = ConversaQuestoesSerializer(questao)
+        """Retorna o status da conversa daquele item."""
+        item = get_object_or_404(Item, id=pk)
+
+        progresso, _ = CapturaProgresso.objects.get_or_create(
+            user=request.user,
+            item=item,
+            defaults={"chance": 0, "capturado": False, "conversa_usada": False}
+        )
+
+        serializer = CapturaProgressoSerializer(progresso)
         return Response(serializer.data)
 
     @extend_schema(request=RespostaSerializer)
     def post(self, request, pk):
+        """Recebe a resposta do jogador para a questão."""
         questao = get_object_or_404(ConversaQuestoes, pk=pk)
         serializer = RespostaSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
         resposta = serializer.validated_data['resposta']
+
+        progresso = CapturaProgresso.objects.filter(
+            user=request.user,
+            item=questao.item
+        ).first()
+
+        # Bloqueia se já conversou
+        if progresso and progresso.conversa_usada:
+            return Response(
+                {"error": "Você já conversou com este item."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Checa resposta
         acertou = questao.checar_resposta(resposta)
+        chance_atual = None
+
+        if acertou and progresso:
+            progresso.aumentar_chance(50)
+            chance_atual = progresso.chance
+
+        # Marca uso da conversa
+        if progresso:
+            progresso.conversa_usada = True
+            progresso.save()
+
         return Response({
             "id": questao.id,
             "pergunta": questao.pergunta,
             "acertou": acertou,
+            "chance": chance_atual,
             "resposta_correta": questao.resposta_correta if not acertou else None
         })
 
@@ -136,13 +172,14 @@ class CapturaView(APIView):
         progresso, _ = CapturaProgresso.objects.get_or_create(
             user=request.user,
             item=item,
-            defaults={"chance": 0, "capturado": False}
+            defaults={"chance": 0, "capturado": False, "conversa_usada": False}
         )
 
         return Response({
             "item_id": item.id,
             "chance": progresso.chance,
-            "capturado": progresso.capturado
+            "capturado": progresso.capturado,
+            "conversa_usada": progresso.conversa_usada,
         })
 
     def post(self, request, item_id):
@@ -154,7 +191,11 @@ class CapturaView(APIView):
 
         item = get_object_or_404(Item, id=item_id)
         habilidade = get_object_or_404(Habilidade, id=habilidade_id)
-        progresso, _ = CapturaProgresso.objects.get_or_create(user=request.user, item=item)
+        progresso, _ = CapturaProgresso.objects.get_or_create(
+            user=request.user,
+            item=item,
+            defaults={"chance": 0, "capturado": False, "conversa_usada": False}
+        )
 
         # Valida se o jogador possui essa habilidade e se ainda pode usá-la
         from habilidades.models import PlayerHabilidade
@@ -174,6 +215,7 @@ class CapturaView(APIView):
         return Response({
             "success": True,
             "chance": progresso.chance,
+            "conversa_usada": progresso.conversa_usada,
             "habilidade": {
                 "id": habilidade.id,
                 "nome": habilidade.nome,
@@ -206,6 +248,22 @@ class ConfirmarCapturaView(views.APIView):
 
         progresso.chance = 0
         progresso.capturado = False
+        progresso.conversa_usada = False  
         progresso.save()
 
         return Response({"mensagem": "Item capturado com sucesso! Chance resetada para 0%."})
+    
+    
+    
+#debug
+class ResetConversaDebugView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        count = CapturaProgresso.objects.filter(user=request.user).update(conversa_usada=False)
+        
+        return Response({
+            "ok": True,
+            "itens_atualizados": count
+        })
+

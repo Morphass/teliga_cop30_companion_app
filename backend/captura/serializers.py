@@ -75,5 +75,5 @@ class RespostaSerializer(serializers.Serializer):
 class CapturaProgressoSerializer(serializers.ModelSerializer):
     class Meta:
         model = CapturaProgresso
-        fields = ['id', 'user', 'item', 'chance', 'capturado']
-        read_only_fields = ['user', 'chance', 'capturado']
+        fields = ['id', 'user', 'item', 'chance', 'capturado', 'conversa_usada']
+        read_only_fields = ['user', 'chance', 'capturado', 'conversa_usada']

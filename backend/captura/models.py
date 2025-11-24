@@ -73,6 +73,7 @@ class CapturaProgresso(models.Model):
     chance = models.FloatField(default=0)  # porcentagem (0–100)
     capturado = models.BooleanField(default=False)
     atualizado_em = models.DateTimeField(auto_now=True)
+    conversa_usada = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('user', 'item')
