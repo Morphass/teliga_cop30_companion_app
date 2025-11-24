@@ -2,7 +2,7 @@
   <q-page class="container q-pa-md">
     <!-- Botão de voltar -->
     <div class="row justify-end q-mb-md">
-      <q-btn label="Voltar para o mapa" flat icon="arrow_back" to="/" />
+      <q-btn label="Voltar para o mapa" flat icon="arrow_back" to="/mapa" />
     </div>
 
     <!-- Detalhes do evento -->
@@ -78,15 +78,12 @@ const route = useRoute()
 const evento = ref(null)
 const isLoading = ref(true)
 const $q = useQuasar()
-
-// Backend base para imagens
 const backendUrl = 'http://127.0.0.1:8000'
 function getImageUrl(imagePath) {
   if (!imagePath) return ''
   return imagePath.startsWith('http') ? imagePath : `${backendUrl}${imagePath}`
 }
-
-// Função para guardar evento na mochila 
+ 
 async function guardarNaMochila() {
   if (!evento.value || !evento.value.id) {
     $q.notify({ type: 'negative', message: 'Evento inválido.' })
@@ -94,7 +91,6 @@ async function guardarNaMochila() {
   }
 
   try {
-    // POST para rota que cria uma captura de evento no backend
     await api.post('/api/capturas/eventos/', { evento_id: evento.value.id })
     $q.notify({ type: 'positive', message: `${evento.value.titulo} foi guardado na mochila!` })
   } catch (err) {
@@ -113,7 +109,6 @@ onMounted(async () => {
     const response = await api.get(`/api/events/${route.params.id}/`)
     evento.value = response.data
 
-    // Inicializa o mapa apenas se houver coordenadas válidas
     if (evento.value?.latitude != null && evento.value?.longitude != null) {
       await nextTick()
 

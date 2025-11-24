@@ -15,6 +15,9 @@ class MochilaItem(models.Model):
     captured_at = models.DateTimeField(auto_now_add=True)
     foi_captura_forcada = models.BooleanField(default=False)
 
+    # NOVO CAMPO
+    foi_captura_forcada = models.BooleanField(default=False, help_text="Indica se a captura usou 'atacar'")
+
     class Meta:
         unique_together = ('user', 'item')
         ordering = ['-captured_at']
@@ -74,6 +77,7 @@ class CapturaProgresso(models.Model):
     capturado = models.BooleanField(default=False)
     atualizado_em = models.DateTimeField(auto_now=True)
     conversa_usada = models.BooleanField(default=False)
+    foi_ataque_usado = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('user', 'item')

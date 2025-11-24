@@ -1,15 +1,16 @@
 <template>
-  <q-page class="bg-grey-2 profile-page">
+  <q-page class="profile-page">
     <div class="profile-header q-pa-md">
-      <h1 class="text-green-10 text-h4 q-mb-xs">Te liga!</h1>
-      <div class="row items-center cursor-pointer" @click="$router.push('/')">
-        <q-icon name="arrow_back" color="green-10" size="20px" />
-        <span class="text-green-10 text-subtitle2 q-ml-xs">Voltar ao início</span>
+      <h1 class="text-h4 q-mb-xs">Te liga!</h1>
+      <div class="row items-center cursor-pointer" @click="$router.push('/mapa')">
+        <q-icon name="arrow_back" size="20px" />
+        <span class="text-subtitle2 q-ml-xs">Voltar ao mapa</span>
       </div>
     </div>
 
-    <div class="flex flex-center q-pa-xl">
-      <div class="register-container">
+    <div class="flex flex-center q-pa-md q-md-pa-lg">
+      
+      <q-card class="profile-card">
         <h1 class="text-h5 text-green-10 text-center q-mb-lg">Perfil</h1>
 
         <div class="row items-center justify-center q-mb-lg">
@@ -46,10 +47,9 @@
           <q-btn label="Alterar senha" color="green-10" class="full-width" rounded @click="abrirAlterarSenha" />
           <q-btn label="Excluir conta" color="purple-10" class="full-width" rounded @click="confirmarExclusao" />
         </div>
-      </div>
+      </q-card>
     </div>
 
-    <!-- Modal de alteração de senha -->
     <q-dialog v-model="senhaDialog">
       <q-card>
         <q-card-section>
@@ -65,7 +65,6 @@
       </q-card>
     </q-dialog>
 
-    <!-- Modal confirmação exclusão -->
     <q-dialog v-model="excluirDialog">
       <q-card>
         <q-card-section>
@@ -172,50 +171,82 @@ async function excluirConta() {
 }
 </script>
 
+<style scoped>
+.profile-header {
+  padding-top: 16px;
+  padding-bottom: 8px;
+  position: relative; 
+  z-index: 10;     
+}
+
+.profile-page {
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.profile-header h1 {
+  color: white !important;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.profile-header .q-icon,
+.profile-header .text-subtitle2 {
+  color: white !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.profile-card {
+  width: 100%;
+  max-width: 500px;
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 24px; 
+}
+
+@media (min-width: 600px) { 
+  .profile-card {
+    padding: 32px;
+  }
+}
 
 
+.profile-card h1 {
+  color: #2e7d32 !important;
+}
 
+.user-name {
+  font-weight: bold;
+  font-size: 1.2rem;
+  color: #2e7d32 !important;
+}
 
+.text-grey-7 {
+  color: #757575 !important;
+}
 
+.perfil-campo {
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 16px; 
+}
 
+.campo-label {
+  display: block; 
+  font-weight: 600;
+  color: #2e7d32; 
+  font-size: 0.9rem;
+  margin-bottom: 2px;
+}
 
+.campo-valor {
+  display: block;
+  color: #333; 
+  font-size: 1.1rem;
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+.action-buttons .q-btn {
+  height: 48px;
+  font-weight: 600;
+}
+</style>

@@ -65,6 +65,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -155,19 +156,21 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS Configuration
 # --------------------------------------------------------------------------
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:9000",
-    "http://127.0.0.1:9000",
-]
+CORS_ALLOWED_ORIGINS = config(
+    "CORS_ALLOWED_ORIGINS",
+    default="http://localhost:9000,http://127.0.0.1:9000",
+    cast=lambda v: v.split(",")
+)
 CORS_ALLOW_CREDENTIALS = True
 
 
 # CSRF Configuration
 # --------------------------------------------------------------------------
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:9000",
-    "http://127.0.0.1:9000",
-]
+CSRF_TRUSTED_ORIGINS = config(
+    "CSRF_TRUSTED_ORIGINS",
+    default="http://localhost:9000,http://127.0.0.1:9000",
+    cast=lambda v: v.split(",")
+)
 
 
 # Django REST Framework Configuration

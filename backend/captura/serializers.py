@@ -7,28 +7,25 @@ from item.serializers import ItemSerializer
 from events.serializers import EventoSerializer
 from item.models import Item
 from events.models import Evento
-import random
+# import random # Não é mais necessário
 
 
 class MochilaItemSerializer(serializers.ModelSerializer):
     item = ItemSerializer(read_only=True)
     item_id = serializers.PrimaryKeyRelatedField(write_only=True, source='item', queryset=Item.objects.all())
-    chance_bonus = serializers.SerializerMethodField()
+    # chance_bonus = serializers.SerializerMethodField() # REMOVIDO
 
     class Meta:
         model = MochilaItem
-        fields = ['id', 'item', 'item_id', 'captured_at', 'chance_bonus']
-
-    def get_chance_bonus(self, obj):
-        """
-        Retorna o bônus de chance se o item for uma poção.
-        Caso contrário, retorna None.
-        """
-        nome = getattr(obj.item, 'nome', '').lower()
-        tipo = getattr(obj.item, 'tipo', '').lower() if hasattr(obj.item, 'tipo') else ''
-        if 'poção' in nome or 'poção' in tipo or 'pocao' in nome or 'pocao' in tipo:
-            return random.randint(10, 30)
-        return None
+        fields = [
+            'id', 
+            'item', 
+            'item_id', 
+            'captured_at', 
+            'foi_captura_forcada' # ADICIONADO
+        ]
+    
+    # get_chance_bonus removido daqui
 
 
 class MochilaEventoSerializer(serializers.ModelSerializer):
@@ -43,10 +40,10 @@ class MochilaEventoSerializer(serializers.ModelSerializer):
 class MochilaPocaoSerializer(serializers.ModelSerializer):
     item = ItemSerializer(read_only=True)
     pocao_id = serializers.PrimaryKeyRelatedField(
-        write_only=True, source='item', queryset=Item.objects.all(), required=False
+        write_only=True, source='item', queryset=Item.objects.filter(tipo=Item.Tipo.POC), required=False
     )
     item_id = serializers.PrimaryKeyRelatedField(
-        write_only=True, source='item', queryset=Item.objects.all(), required=False
+        write_only=True, source='item', queryset=Item.objects.filter(tipo=Item.Tipo.POC), required=False
     )
     chance_bonus = serializers.SerializerMethodField()
 
@@ -56,10 +53,12 @@ class MochilaPocaoSerializer(serializers.ModelSerializer):
 
     def get_chance_bonus(self, obj):
         """
-        Retorna a porcentagem de chance que a poção concede.
-        Valor aleatório entre 10 e 30%.
+        Retorna a porcentagem de chance real da poção.
         """
-        return random.randint(10, 30)
+        # CORRIGIDO: Pega o bônus real do item
+        if obj.item and obj.item.bonus_captura:
+            return obj.item.bonus_captura
+        return 0 # Valor padrão se não houver bônus
 
 
 class ConversaQuestoesSerializer(serializers.ModelSerializer):

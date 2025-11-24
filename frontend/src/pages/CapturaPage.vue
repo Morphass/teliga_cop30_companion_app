@@ -1,9 +1,7 @@
 <template>
   <q-page class="container q-pa-md position-relative green-bg">
-    <!-- CARD PRINCIPAL -->
     <q-card class="main-card">
       <q-card-section class="row no-wrap">
-        <!-- IMAGEM -->
         <div class="col-7 card-image relative-position">
           <q-img :src="item?.imagem" class="main-img" />
           <transition name="fade">
@@ -14,9 +12,7 @@
           </transition>
         </div>
 
-        <!-- AÇÕES -->
         <q-card-section class="col-5 actions-col column" style="height: 100%; align-items: flex-start;">
-          <!-- Título no topo -->
           <div class="row items-center q-mb-md">
             <q-icon name="backpack" color="green-8" size="28px" class="q-mr-sm" />
             <span class="text-h5" style="color:#166534; font-weight: 700;">Capturar</span>
@@ -24,7 +20,6 @@
 
           <div style="flex-grow:1;"></div>
 
-          <!-- Botões dinâmicos vindos do banco -->
           <div class="column full-width">
             <q-btn
               v-for="habilidade in habilidades"
@@ -54,7 +49,6 @@
         </q-card-section>
       </q-card-section>
 
-      <!-- BARRA DE PROGRESSO -->
       <q-card-section class="q-mt-md">
         <q-linear-progress
           :value="chance / 100"
@@ -76,7 +70,6 @@
       </q-card-section>
     </q-card>
 
-    <!-- DIALOGO DE PERGUNTA -->
     <q-dialog v-model="mostrarDialogo" persistent>
       <q-card style="min-width: 400px">
         <q-card-section>
@@ -125,19 +118,11 @@ import { useQuasar } from 'quasar'
 const $q = useQuasar()
 const route = useRoute()
 const router = useRouter()
-
-// Dados do item e chance
 const item = ref(null)
 const chance = ref(0)
-
-// lista de habilidades (vinda do backend)
 const habilidades = ref([])
-
-// Animações
 const mostrarBonk = ref(false)
 const mostrarOvo = ref(false)
-
-// Diálogo de perguntas
 const mostrarDialogo = ref(false)
 const questao = ref(null)
 const resultado = ref(null)
@@ -146,10 +131,6 @@ const conversaUsada = ref(false)
 
 /* ============================
       FUNÇÃO load()
-============================= */
-async function load(itemId) {
-  try {
-    const [resItem, resProgresso] = await Promise.all([
       api.get(`/api/item/${itemId}/`),
       api.get(`/api/captura/${itemId}/`) // <-- CORRETO
     ])
@@ -183,14 +164,6 @@ onMounted(() => {
 
 /* ============================
   Recarrega quando trocar de item
-============================= */
-watch(() => route.params.id, (newId) => {
-  if (newId) load(newId)
-})
-
-/* ============================
-      EXECUTAR HABILIDADE
-============================= */
 async function executarAcao(habilidade_id) {
   try {
     const itemId = route.params.id
@@ -213,7 +186,6 @@ async function executarAcao(habilidade_id) {
 
 /* ============================
         USAR HABILIDADE
-============================= */
 async function usarHabilidade(h) {
   if (h.quantidade === 0) {
     $q.notify({ type: 'negative', message: 'Sem usos restantes dessa habilidade.' })
@@ -234,22 +206,31 @@ async function usarHabilidade(h) {
 
 /* ============================
           CAPTURAR
-============================= */
 async function capturar() {
+  // $q.loading.show({ message: 'Salvando na mochila...' }) 
+
   try {
     const itemId = route.params.id
     await api.post(`/api/captura/${itemId}/confirmar/`)
     chance.value = 100
-    $q.notify({ type: 'positive', message: 'Item capturado!' })
-    router.push({ name: 'mapa' })
-  } catch {
-    $q.notify({ type: 'negative', message: 'Erro ao executar ação' })
+    $q.notify({
+        type: 'positive',
+        color: 'positive',
+        icon: 'pets',
+        message: `${item.value.nome} foi capturado e adicionado à mochila!`,
+        position: 'top'
+    })
+
+    router.push({ name: 'mapa' }) 
+  
+  } catch(err) {
+    console.error("Erro ao capturar:", err)
+    $q.notify({ type: 'negative', message: 'Erro ao confirmar a captura' })
   }
 }
 
 /* ============================
           CONVERSAR
-============================= */
 async function abrirConversa() {
   if (conversaUsada.value) {
     $q.notify({ type: 'warning', message: 'Você já conversou com este item.' })
@@ -278,7 +259,6 @@ async function abrirConversa() {
 
 /* ============================
         RESPONDER QUESTÃO
-============================= */
 async function responder(letra) {
   try {
     const res = await api.post(`/api/questao/${questao.value.id}/`, {
@@ -318,7 +298,7 @@ function fecharDialogo() {
   margin: auto;
   border-radius: 16px;
   padding: 16px;
-  background-color: #ffffff;
+  background-color: #ffffff; 
   display: flex;
   flex-direction: column;
 }
