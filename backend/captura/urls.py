@@ -2,8 +2,7 @@ from django.urls import path
 from .views import (
     MochilaItemListCreateView, MochilaEventoListCreateView, MochilaPocaoListCreateView,
     QuestaoView, QuestaoAleatoriaView, QuestaoPorItemView,
-    CapturaView, ConfirmarCapturaView,
-    MochilaFaunaListView, MochilaFloraListView, MochilaItensListView 
+    CapturaView, ConfirmarCapturaView, ResetConversaDebugView, 
 )
 
 urlpatterns = [
@@ -18,4 +17,9 @@ urlpatterns = [
     path('questao/<int:pk>/', QuestaoView.as_view(), name='questao_view'),
     path('questao/aleatoria/', QuestaoAleatoriaView.as_view(), name='questao-aleatoria'),
     path('questao/item/<int:item_id>/', QuestaoPorItemView.as_view(), name='questao-por-item'),
+    
+    #debug
+    #reset de conversa
+    path("debug/reset-conversa/", ResetConversaDebugView.as_view()),
+
 ]
