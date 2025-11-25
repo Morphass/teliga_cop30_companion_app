@@ -48,6 +48,12 @@ class EventoViewSet(viewsets.ModelViewSet):
 
         desafiante_item = get_object_or_404(MochilaItem, id=item_desafiante_id, user=request.user)
 
+        if desafiante_item.defendendo_eventos.exists():
+             evento_ocupado = desafiante_item.defendendo_eventos.first()
+             return Response({
+                 "error": f"Este animal já está defendendo o evento '{evento_ocupado.titulo}'. Escolha outro ou perca a posse lá primeiro."
+             }, status=status.HTTP_400_BAD_REQUEST)
+
         # --- LÓGICA DO COMBATE ---
 
         if not evento.campeao:

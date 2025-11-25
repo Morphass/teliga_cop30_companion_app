@@ -12,6 +12,7 @@ from events.models import Evento
 class MochilaItemSerializer(serializers.ModelSerializer):
     item = ItemSerializer(read_only=True)
     item_id = serializers.PrimaryKeyRelatedField(write_only=True, source='item', queryset=Item.objects.all())
+    evento_defendido = serializers.SerializerMethodField()
 
     class Meta:
         model = MochilaItem
@@ -25,8 +26,20 @@ class MochilaItemSerializer(serializers.ModelSerializer):
             'vida_maxima',
             'ataque',
             'bonus_vida_recebido',
-            'bonus_ataque_recebido'
+            'bonus_ataque_recebido',
+            'evento_defendido' 
         ]
+
+    def get_evento_defendido(self, obj):
+        """
+        Verifica se este item da mochila está atualmente defendendo algum evento.
+        Retorna o ID e Título do evento se encontrar, ou None.
+        """
+        if hasattr(obj, 'defendendo_eventos'):
+            evento = obj.defendendo_eventos.first()
+            if evento:
+                return {"id": evento.id, "titulo": evento.titulo}
+        return None
 
 
 class MochilaEventoSerializer(serializers.ModelSerializer):
