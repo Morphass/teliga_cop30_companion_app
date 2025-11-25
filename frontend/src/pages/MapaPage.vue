@@ -35,9 +35,28 @@
                   v-for="evento in eventosFixosValidos"
                   :key="`evento-${evento.id}`"
                   :lat-lng="[evento.latitude, evento.longitude]"
+                  :icon="getIconeEvento(evento)"
                   @click="irParaDetalhesEvento(evento.id)"
                 >
-                  <l-popup>{{ evento.titulo }}</l-popup>
+                  <l-popup>
+                    <div class="text-center">
+                      <b>{{ evento.titulo }}</b>
+                      <br />
+                      
+                      <div v-if="evento.nome_campeao">
+                        <span v-if="currentUser && evento.nome_campeao === currentUser.username" class="text-orange-9 text-weight-bold" style="font-size: 0.85em">
+                          🏆 Você domina este local!
+                        </span>
+                        <span v-else class="text-red-8" style="font-size: 0.85em">
+                          ⚔️ Dominado por: {{ evento.nome_campeao }}
+                        </span>
+                      </div>
+                      
+                      <div v-else class="text-green-8" style="font-size: 0.85em">
+                        🏁 Livre para conquistar!
+                      </div>
+                    </div>
+                  </l-popup>
                 </l-marker>
 
                 <l-marker
@@ -163,8 +182,15 @@ import { Geolocation } from '@capacitor/geolocation'
 import iconUrl from 'leaflet/dist/images/marker-icon.png'
 import shadowUrl from 'leaflet/dist/images/marker-shadow.png'
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png'
+
+
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({ iconRetinaUrl, iconUrl, shadowUrl })
+
+const ICON_BLUE = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png';
+const ICON_RED = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png';
+const ICON_GOLD = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png';
+const SHADOW_URL_COLOR = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png';
 
 const router = useRouter()
 const $q = useQuasar()
@@ -176,6 +202,8 @@ const eventosFixos = ref([])
 const itensAleatorios = ref([])
 const eventosDrawerAberto = ref(false)
 const meusEventos = ref([])
+const currentUser = ref(null)
+
 const usuarioIcon = L.icon({
   iconUrl: '/icons/usuario.png',
   iconSize: [40, 40],
@@ -184,6 +212,27 @@ const usuarioIcon = L.icon({
 
 const eventosFixosValidos = computed(() => eventosFixos.value.filter(e => e.latitude != null && e.longitude != null))
 const itensAleatoriosValidos = computed(() => itensAleatorios.value.filter(i => i.latitude != null && i.longitude != null))
+
+function getIconeEvento(evento) {
+  let selectedIcon = ICON_BLUE; 
+
+  if (evento.nome_campeao) {
+    if (currentUser.value && evento.nome_campeao === currentUser.value.username) {
+      selectedIcon = ICON_GOLD; 
+    } else {
+      selectedIcon = ICON_RED; 
+    }
+  }
+
+  return L.icon({
+    iconUrl: selectedIcon,
+    shadowUrl: SHADOW_URL_COLOR,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+  });
+}
 
 function getIcon(tipo) {
   const largura = 40;
@@ -220,25 +269,12 @@ async function coletarPocao(pocao) {
   } catch (err) {
     const status = err?.response?.status
     if (status === 400 || status === 409) {
-      $q.notify({
-        message: `${pocao.nome} já foi coletada.`,
-        color: 'info',
-        icon: 'info',
-        position: 'top'
-      });
+      $q.notify({ message: `${pocao.nome} já foi coletada.`, color: 'info', icon: 'info', position: 'top' });
     } else if (status === 401) {
-      $q.notify({
-        message: 'Você precisa estar logado para coletar poções.',
-        color: 'warning',
-        position: 'top'
-      });
+      $q.notify({ message: 'Você precisa estar logado para coletar poções.', color: 'warning', position: 'top' });
     } else {
       console.error('Erro ao coletar poção:', err)
-      $q.notify({
-        message: 'Erro ao coletar poção. Tente novamente.',
-        color: 'negative',
-        position: 'top'
-      });
+      $q.notify({ message: 'Erro ao coletar poção. Tente novamente.', color: 'negative', position: 'top' });
     }
   }
 }
@@ -254,20 +290,12 @@ async function obterPosicaoUsuario() {
     if (permission.location !== 'granted') {
       const request = await Geolocation.requestPermissions();
       if (request.location !== 'granted') {
-        $q.notify({
-          message: 'A permissão de localização é essencial para o mapa.',
-          color: 'negative',
-          icon: 'location_off'
-        });
+        $q.notify({ message: 'A permissão de localização é essencial para o mapa.', color: 'negative', icon: 'location_off' });
         return; 
       }
     }
 
-    const position = await Geolocation.getCurrentPosition({
-      enableHighAccuracy: true, 
-      timeout: 10000 
-    });
-
+    const position = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000 });
     usuarioPos.value = [position.coords.latitude, position.coords.longitude]
     mapCenter.value = usuarioPos.value
     
@@ -279,11 +307,7 @@ async function obterPosicaoUsuario() {
 
   } catch (err) {
     console.error('Erro ao obter localização nativa:', err);
-    $q.notify({
-      message: 'Não foi possível obter sua localização. Verifique se o GPS está ativado.',
-      color: 'negative',
-      icon: 'error'
-    });
+    $q.notify({ message: 'Não foi possível obter sua localização. Verifique se o GPS está ativado.', color: 'negative', icon: 'error' });
   }
 }
 
@@ -296,38 +320,27 @@ async function carregarItensProximos() {
       qtd_itens: 10
     })
     itensAleatorios.value = response.data;
-  } catch (err) {
-    console.error('Erro ao carregar itens próximos:', err)
-  }
+  } catch (err) { console.error('Erro ao carregar itens próximos:', err) }
 }
 
 async function carregarEventosFixos() {
   try {
     const response = await api.get('/api/events/')
     eventosFixos.value = response.data
-  } catch (err) {
-    console.error('Erro ao carregar eventos fixos:', err)
-  }
+  } catch (err) { console.error('Erro ao carregar eventos fixos:', err) }
 }
 
 async function carregarMeusEventos() {
   try {
     const response = await api.get('/api/capturas/eventos/')
     meusEventos.value = response.data
-  } catch (err) {
-    console.error('Erro ao carregar meus eventos:', err)
-  }
+  } catch (err) { console.error('Erro ao carregar meus eventos:', err) }
 }
 
 function formatarData(dataISO) {
   if (!dataISO) return '';
   const data = new Date(dataISO);
-  return data.toLocaleDateString('pt-BR', {
-    timeZone: 'UTC', 
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  });
+  return data.toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 function getStatusEvento(dataISO) {
@@ -345,7 +358,16 @@ function getStatusEvento(dataISO) {
 
 onMounted(async () => {
   isMounted.value = true
-  obterPosicaoUsuario() 
+  const userData = localStorage.getItem('user_data')
+  if (userData && userData !== 'undefined') {
+    try {
+      currentUser.value = JSON.parse(userData)
+    } catch {
+      // Ignora erro de parse 
+    }
+  }
+
+  await obterPosicaoUsuario() 
   await carregarEventosFixos();
   await carregarMeusEventos();
 })
