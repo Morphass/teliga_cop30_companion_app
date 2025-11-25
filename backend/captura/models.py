@@ -74,6 +74,7 @@ class CapturaProgresso(models.Model):
     capturado = models.BooleanField(default=False)
     atualizado_em = models.DateTimeField(auto_now=True)
     conversa_usada = models.BooleanField(default=False)
+    foi_ataque_usado = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('user', 'item')
@@ -85,8 +86,8 @@ class CapturaProgresso(models.Model):
         return self.chance
 
     def mudar_chance(self, valor):
-        """Modifica a chance sem ultrapassar 0–1."""
-        self.chance = max(0, min(1, self.chance + valor))
+        """Modifica a chance sem ultrapassar 0–100."""
+        self.chance = max(0, min(100, self.chance + valor))
         self.save()
         return self.chance
 

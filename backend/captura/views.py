@@ -267,3 +267,77 @@ class ResetConversaDebugView(APIView):
             "itens_atualizados": count
         })
 
+# ===========================
+#  HABILIDADES FIXAS
+# ===========================
+
+class SocoView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, item_id):
+        progresso = CapturaProgresso.objects.filter(
+            user=request.user,
+            item_id=item_id
+        ).first()
+
+        if not progresso:
+            return Response({"error": "Progresso não encontrado."}, status=404)
+
+        # Chance de falhar: 25%
+        falhou = random.random() < 0.25
+
+        if falhou:
+            progresso.chance -= 20
+            if progresso.chance < 0:
+                progresso.chance = 0
+
+            progresso.save()
+            return Response({
+                "mensagem": "O soco errou! Chance diminuiu em 5.",
+                "sucesso": False,
+                "chance_atual": progresso.chance
+            }, status=200)
+
+        # Se acertou:
+        progresso.chance += 10
+        if progresso.chance > 100:
+            progresso.chance = 100
+
+        progresso.save()
+        return Response({
+            "mensagem": "Soco acertou! Chance aumentou em 10.",
+            "sucesso": True,
+            "chance_atual": progresso.chance
+        }, status=200)
+        
+class UsarOvoView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, item_id):
+        progresso = CapturaProgresso.objects.filter(
+            user=request.user,
+            item_id=item_id
+        ).first()
+
+        if not progresso:
+            return Response({"error": "Progresso não encontrado."}, status=404)
+
+        # 10% de erro
+        erro = random.random() < 0.10
+
+        if erro:
+            progresso.chance = max(0, progresso.chance - 5)
+            progresso.save()
+            return Response({
+                "mensagem": "O ovo quebrou! Chance diminuiu em 5.",
+                "sucesso": False,
+                "chance_atual": progresso.chance
+            }, status=200)
+        else:
+            progresso.chance = min(100, progresso.chance + 15)
+            progresso.save()
+            return Response({
+                "mensagem": "O ovo funcionou! Chance aumentou em 15.",
+                "sucesso": True,
+                "chance_atual": progresso.chance
+            }, status=200)

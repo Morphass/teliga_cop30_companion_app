@@ -50,6 +50,22 @@
               :disable="conversaUsada"
               :class="{ 'bg-grey-5': conversaUsada }"
             />
+            <q-btn
+              label="Soco"
+              icon="sports_mma"
+              color="red"
+              class="full-width q-mb-sm"
+              @click="usarSoco"
+            />
+
+            <q-btn
+              label="Ovo 🥚"
+              color="yellow"
+              class="full-width q-mb-sm"
+              :disable="ovoUsado"
+              @click="usarOvo"
+            />
+            
           </div>
         </q-card-section>
       </q-card-section>
@@ -230,6 +246,54 @@ async function usarHabilidade(h) {
   }
 
   await executarAcao(h.id)
+}
+
+async function usarSoco() {
+  try {
+    const itemId = route.params.id
+
+    const res = await api.post(`/api/captura/${itemId}/soco/`)
+
+    chance.value = res.data.chance_atual
+
+    $q.notify({
+      type: res.data.sucesso ? 'positive' : 'negative',
+      message: res.data.mensagem
+    })
+
+    // animação opcional
+    mostrarBonk.value = true
+    setTimeout(() => (mostrarBonk.value = false), 600)
+
+  } catch (err) {
+    console.error(err)
+    $q.notify({ type: 'negative', message: 'Erro ao usar soco' })
+  }
+}
+
+async function usarOvo() {
+  try {
+    const itemId = route.params.id
+
+    const res = await api.post(`/api/captura/${itemId}/usar_ovo/`)
+
+    // Atualiza a chance imediatamente usando chance_atual
+    if (res.data.chance_atual !== undefined && res.data.chance_atual !== null) {
+      chance.value = res.data.chance_atual
+    }
+
+    // Mostra animação
+    mostrarOvo.value = true
+    setTimeout(() => (mostrarOvo.value = false), 1500)
+
+    // Notificação
+    const mensagem = res.data.sucesso ? 'Sucesso! +15%' : 'O ovo quebrou! -5%'
+    $q.notify({ type: res.data.sucesso ? 'positive' : 'negative', message: mensagem })
+
+  } catch (err) {
+    console.error(err)
+    $q.notify({ type: 'negative', message: 'Erro ao usar o ovo' })
+  }
 }
 
 /* ============================
