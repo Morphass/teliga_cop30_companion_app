@@ -263,48 +263,35 @@ class ConfirmarCapturaView(views.APIView):
 
     def post(self, request, item_id):
         progresso = CapturaProgresso.objects.filter(user=request.user, item_id=item_id).first()
-        if not progresso: return Response({"error": "Progresso não encontrado."}, status=404)
-        if progresso.chance < 100: return Response({"error": "Chance insuficiente."}, status=400)
-
-        progresso.capturado = True
-        progresso.save()
+        
+        if not progresso: 
+            return Response({"error": "Progresso não encontrado."}, status=404)
+        
+        if progresso.chance < 100: 
+            return Response({"error": "Chance insuficiente para capturar."}, status=400)
 
         item = get_object_or_404(Item, pk=item_id)
 
-        # --- LÓGICA DE ATRIBUTOS ALEATÓRIOS (SPAWN) ---
         bonus_ranges = {
             'COMUM': (0, 10),
             'RARO': (10, 30),
             'EPICO': (30, 60),
             'LENDARIO': (60, 100)
         }
-
         intervalo = bonus_ranges.get(getattr(item, 'raridade', 'COMUM'), (0, 10))
-
+        
         bonus_vida = random.randint(intervalo[0], intervalo[1])
         bonus_ataque = random.randint(intervalo[0] // 2, intervalo[1] // 2)
-
-        mochila_item, created = MochilaItem.objects.get_or_create(
+        mochila_item = MochilaItem.objects.create(
             user=request.user,
-            item_id=item_id,
-            defaults={
-                'foi_captura_forcada': progresso.foi_ataque_usado,
-                'vida_maxima': item.vida_base + bonus_vida,
-                'vida_atual': item.vida_base + bonus_vida,
-                'ataque': item.ataque_base + bonus_ataque,
-                'bonus_vida_recebido': bonus_vida,
-                'bonus_ataque_recebido': bonus_ataque
-            }
+            item=item,
+            foi_captura_forcada=progresso.foi_ataque_usado,
+            vida_maxima=item.vida_base + bonus_vida,
+            vida_atual=item.vida_base + bonus_vida,
+            ataque=item.ataque_base + bonus_ataque,
+            bonus_vida_recebido=bonus_vida,
+            bonus_ataque_recebido=bonus_ataque
         )
-
-        if not created:
-            mochila_item.foi_captura_forcada = progresso.foi_ataque_usado
-            mochila_item.vida_maxima = item.vida_base + bonus_vida
-            mochila_item.vida_atual = item.vida_base + bonus_vida
-            mochila_item.ataque = item.ataque_base + bonus_ataque
-            mochila_item.bonus_vida_recebido = bonus_vida
-            mochila_item.bonus_ataque_recebido = bonus_ataque
-            mochila_item.save()
 
         progresso.chance = 0
         progresso.capturado = False
@@ -314,6 +301,7 @@ class ConfirmarCapturaView(views.APIView):
 
         return Response({
             "mensagem": f"{item.nome} capturado com sucesso!",
+            "id_captura": mochila_item.id, 
             "bonus_vida": f"+{bonus_vida}",
             "bonus_ataque": f"+{bonus_ataque}",
             "vida_total": mochila_item.vida_maxima,

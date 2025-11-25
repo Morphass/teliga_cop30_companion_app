@@ -79,13 +79,26 @@
                 @click="abrirModalDetalhe(captura, 'fauna')"
               >
                 <q-img :src="captura.item.imagem || 'https://i.imgur.com/qL4lF3c.png'" :ratio="1">
+                  
                   <div v-if="captura.evento_defendido" class="absolute-top-right q-pa-xs">
                     <q-icon name="shield" color="orange" size="sm" class="drop-shadow" />
                   </div>
+
+                  <div class="absolute-top-left q-ma-xs" style="z-index: 1;">
+                    <q-badge 
+                      color="grey-9" 
+                      text-color="white" 
+                      style="font-size: 0.65rem; padding: 2px 5px; min-height: auto;"
+                    >
+                      #{{ captura.id }}
+                    </q-badge>
+                  </div>
+
                   <div class="absolute-bottom text-subtitle2 text-center">
                     {{ captura.item.nome }}
                   </div>
                 </q-img>
+                
                 <q-card-section class="q-pa-xs row justify-center q-gutter-xs" v-if="captura.vida_maxima">
                   <q-badge color="red-5" class="text-caption">HP {{ captura.vida_atual }}</q-badge>
                   <q-badge color="blue-5" class="text-caption">ATQ {{ captura.ataque }}</q-badge>

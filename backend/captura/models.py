@@ -17,7 +17,7 @@ class MochilaItem(models.Model):
     bonus_ataque_recebido = models.IntegerField(default=0)
 
     class Meta:
-        unique_together = ('user', 'item')
+        #esta comentado para que a função de pegar varios animais funcione unique_together = ('user', 'item')
         ordering = ['-captured_at']
 
     def __str__(self):
