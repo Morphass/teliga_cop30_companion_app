@@ -18,14 +18,18 @@ class MochilaItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = MochilaItem
         fields = [
-            'id', 
+'id', 
             'item', 
             'item_id', 
             'captured_at', 
-            'foi_captura_forcada' # ADICIONADO
+            'foi_captura_forcada',
+            'vida_atual',
+            'vida_maxima',
+            'ataque',
+            'bonus_vida_recebido',
+            'bonus_ataque_recebido'
         ]
     
-    # get_chance_bonus removido daqui
 
 
 class MochilaEventoSerializer(serializers.ModelSerializer):
@@ -55,10 +59,9 @@ class MochilaPocaoSerializer(serializers.ModelSerializer):
         """
         Retorna a porcentagem de chance real da poção.
         """
-        # CORRIGIDO: Pega o bônus real do item
         if obj.item and obj.item.bonus_captura:
             return obj.item.bonus_captura
-        return 0 # Valor padrão se não houver bônus
+        return 0 
 
 
 class ConversaQuestoesSerializer(serializers.ModelSerializer):
