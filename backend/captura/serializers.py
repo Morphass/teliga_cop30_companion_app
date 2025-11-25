@@ -7,21 +7,19 @@ from item.serializers import ItemSerializer
 from events.serializers import EventoSerializer
 from item.models import Item
 from events.models import Evento
-# import random # Não é mais necessário
 
 
 class MochilaItemSerializer(serializers.ModelSerializer):
     item = ItemSerializer(read_only=True)
     item_id = serializers.PrimaryKeyRelatedField(write_only=True, source='item', queryset=Item.objects.all())
-    # chance_bonus = serializers.SerializerMethodField() # REMOVIDO
 
     class Meta:
         model = MochilaItem
         fields = [
-'id', 
-            'item', 
-            'item_id', 
-            'captured_at', 
+            'id',
+            'item',
+            'item_id',
+            'captured_at',
             'foi_captura_forcada',
             'vida_atual',
             'vida_maxima',
@@ -29,7 +27,6 @@ class MochilaItemSerializer(serializers.ModelSerializer):
             'bonus_vida_recebido',
             'bonus_ataque_recebido'
         ]
-    
 
 
 class MochilaEventoSerializer(serializers.ModelSerializer):
@@ -56,12 +53,9 @@ class MochilaPocaoSerializer(serializers.ModelSerializer):
         fields = ['id', 'item', 'pocao_id', 'item_id', 'captured_at', 'chance_bonus']
 
     def get_chance_bonus(self, obj):
-        """
-        Retorna a porcentagem de chance real da poção.
-        """
-        if obj.item and obj.item.bonus_captura:
+        if obj.item and getattr(obj.item, 'bonus_captura', None):
             return obj.item.bonus_captura
-        return 0 
+        return 0
 
 
 class ConversaQuestoesSerializer(serializers.ModelSerializer):
@@ -77,5 +71,5 @@ class RespostaSerializer(serializers.Serializer):
 class CapturaProgressoSerializer(serializers.ModelSerializer):
     class Meta:
         model = CapturaProgresso
-        fields = ['id', 'user', 'item', 'chance', 'capturado']
-        read_only_fields = ['user', 'chance', 'capturado']
+        fields = ['id', 'user', 'item', 'chance', 'capturado', 'conversa_usada']
+        read_only_fields = ['user', 'chance', 'capturado', 'conversa_usada']

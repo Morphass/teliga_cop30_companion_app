@@ -114,21 +114,49 @@ class QuestaoView(views.APIView):
 
     @extend_schema(responses=ConversaQuestoesSerializer)
     def get(self, request, pk):
+        """Retorna a questão com id=pk"""
         questao = get_object_or_404(ConversaQuestoes, pk=pk)
         serializer = ConversaQuestoesSerializer(questao)
         return Response(serializer.data)
 
     @extend_schema(request=RespostaSerializer)
     def post(self, request, pk):
+        """Recebe a resposta do jogador para a questão (pk é id da questão)"""
         questao = get_object_or_404(ConversaQuestoes, pk=pk)
         serializer = RespostaSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
         resposta = serializer.validated_data['resposta']
+
+        progresso = CapturaProgresso.objects.filter(
+            user=request.user,
+            item=questao.item
+        ).first()
+
+        # Bloqueia se já conversou
+        if progresso and progresso.conversa_usada:
+            return Response(
+                {"error": "Você já conversou com este item."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         acertou = questao.checar_resposta(resposta)
+        chance_atual = None
+
+        if acertou and progresso:
+            progresso.aumentar_chance(50)
+            chance_atual = progresso.chance
+
+        # Marca uso da conversa
+        if progresso:
+            progresso.conversa_usada = True
+            progresso.save()
+
         return Response({
             "id": questao.id,
             "pergunta": questao.pergunta,
             "acertou": acertou,
+            "chance": chance_atual,
             "resposta_correta": questao.resposta_correta if not acertou else None
         })
 
@@ -158,51 +186,75 @@ class CapturaView(APIView):
     def get(self, request, item_id):
         item = get_object_or_404(Item, id=item_id)
         progresso, _ = CapturaProgresso.objects.get_or_create(
-            user=request.user, item=item, defaults={"chance": 0, "capturado": False}
+            user=request.user,
+            item=item,
+            defaults={"chance": 0, "capturado": False, "conversa_usada": False}
         )
         return Response({
             "item_id": item.id,
             "chance": progresso.chance,
-            "capturado": progresso.capturado
+            "capturado": progresso.capturado,
+            "conversa_usada": progresso.conversa_usada,
         })
 
     def post(self, request, item_id):
         habilidade_id = request.data.get("habilidade_id")
-        acao = request.data.get("acao") 
+        acao = request.data.get("acao")
 
         item = get_object_or_404(Item, id=item_id)
-        progresso, _ = CapturaProgresso.objects.get_or_create(user=request.user, item=item)
+        progresso, _ = CapturaProgresso.objects.get_or_create(
+            user=request.user,
+            item=item,
+            defaults={"chance": 0, "capturado": False, "conversa_usada": False}
+        )
 
+        # Se veio uma ação textual (ex: atacar, conversar, investigar)
         if acao:
             valores = {'atacar': 20, 'conversar': 10, 'investigar': 15}
-            if acao == 'atacar': progresso.foi_ataque_usado = True
+            if acao == 'atacar':
+                progresso.foi_ataque_usado = True
             if acao in valores:
                 progresso.aumentar_chance(valores[acao])
-                return Response({"chance": progresso.chance, "acao": acao})
+                return Response({"chance": progresso.chance, "acao": acao, "conversa_usada": progresso.conversa_usada})
 
-        if not habilidade_id:
-            return Response({"error": "Ação ou Habilidade não informada."}, status=status.HTTP_400_BAD_REQUEST)
+            # ação desconhecida
+            return Response({"error": "Ação desconhecida."}, status=400)
 
-        if habilidade_id == 'conversar':
-            progresso.chance += 20 
-            if progresso.chance > 100: progresso.chance = 100
-            progresso.save()
-            return Response({"success": True, "chance": progresso.chance, "mensagem": "Bônus de conversa aplicado!"})
-        else:
+        # Se veio uma habilidade
+        if habilidade_id:
+            # valida existência e posse da habilidade
             try:
                 habilidade = get_object_or_404(Habilidade, id=int(habilidade_id))
             except (ValueError, Habilidade.DoesNotExist):
-                return Response({"error": f"Habilidade inválida."}, status=404)
-            
+                return Response({"error": "Habilidade inválida."}, status=404)
+
             from habilidades.models import PlayerHabilidade
             player_hab = PlayerHabilidade.objects.filter(user=request.user, habilidade=habilidade).first()
-            if not player_hab or not player_hab.pode_usar():
-                return Response({"error": "Sem usos restantes."}, status=400)
+            if not player_hab:
+                return Response({"error": "Você não possui essa habilidade."}, status=400)
+            if not player_hab.pode_usar():
+                return Response({"error": "Sem usos restantes dessa habilidade."}, status=400)
 
+            # Aplica efeito da habilidade sobre o progresso
             habilidade.aplicar(progresso)
+
+            # Registra uso
             player_hab.registrar_uso()
             progresso.save()
-            return Response({"success": True, "chance": progresso.chance, "mensagem": f"{habilidade.nome} usada!"})
+
+            return Response({
+                "success": True,
+                "chance": progresso.chance,
+                "conversa_usada": progresso.conversa_usada,
+                "habilidade": {
+                    "id": habilidade.id,
+                    "nome": habilidade.nome,
+                    "quantidade": player_hab.quantidade,
+                },
+                "mensagem": f"{habilidade.nome} usada com sucesso! Chance atual: {progresso.chance}%"
+            }, status=status.HTTP_200_OK)
+
+        return Response({"error": "Ação ou Habilidade não informada."}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -220,22 +272,20 @@ class ConfirmarCapturaView(views.APIView):
         item = get_object_or_404(Item, pk=item_id)
 
         # --- LÓGICA DE ATRIBUTOS ALEATÓRIOS (SPAWN) ---
-        # Define intervalos de bônus baseados na raridade
         bonus_ranges = {
             'COMUM': (0, 10),
             'RARO': (10, 30),
             'EPICO': (30, 60),
             'LENDARIO': (60, 100)
         }
-        
+
         intervalo = bonus_ranges.get(getattr(item, 'raridade', 'COMUM'), (0, 10))
-        
-        
+
         bonus_vida = random.randint(intervalo[0], intervalo[1])
         bonus_ataque = random.randint(intervalo[0] // 2, intervalo[1] // 2)
 
         mochila_item, created = MochilaItem.objects.get_or_create(
-            user=request.user, 
+            user=request.user,
             item_id=item_id,
             defaults={
                 'foi_captura_forcada': progresso.foi_ataque_usado,
@@ -244,9 +294,8 @@ class ConfirmarCapturaView(views.APIView):
                 'ataque': item.ataque_base + bonus_ataque,
                 'bonus_vida_recebido': bonus_vida,
                 'bonus_ataque_recebido': bonus_ataque
-            } 
+            }
         )
-
 
         if not created:
             mochila_item.foi_captura_forcada = progresso.foi_ataque_usado
@@ -257,9 +306,9 @@ class ConfirmarCapturaView(views.APIView):
             mochila_item.bonus_ataque_recebido = bonus_ataque
             mochila_item.save()
 
-
         progresso.chance = 0
         progresso.capturado = False
+        progresso.conversa_usada = False
         progresso.foi_ataque_usado = False
         progresso.save()
 
@@ -269,4 +318,17 @@ class ConfirmarCapturaView(views.APIView):
             "bonus_ataque": f"+{bonus_ataque}",
             "vida_total": mochila_item.vida_maxima,
             "ataque_total": mochila_item.ataque
+        }, status=status.HTTP_200_OK)
+
+
+# debug
+class ResetConversaDebugView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        count = CapturaProgresso.objects.filter(user=request.user).update(conversa_usada=False)
+
+        return Response({
+            "ok": True,
+            "itens_atualizados": count
         })

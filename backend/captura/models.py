@@ -8,16 +8,16 @@ class MochilaItem(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='mochila_itens')
     item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='capturado_por')
     captured_at = models.DateTimeField(auto_now_add=True)
-    
+
     foi_captura_forcada = models.BooleanField(default=False, help_text="Indica se a captura usou 'atacar'")
     vida_atual = models.IntegerField(default=100)
-    vida_maxima = models.IntegerField(default=100) 
-    ataque = models.IntegerField(default=10)       
+    vida_maxima = models.IntegerField(default=100)
+    ataque = models.IntegerField(default=10)
     bonus_vida_recebido = models.IntegerField(default=0)
     bonus_ataque_recebido = models.IntegerField(default=0)
 
     class Meta:
-        unique_together = ('user', 'item') # ATENÇÃO: Se quiser ter por exemplo várias Araras com stats diferentes, terá que remover isso no futuro.
+        unique_together = ('user', 'item')
         ordering = ['-captured_at']
 
     def __str__(self):
@@ -71,9 +71,10 @@ class Captura(models.Model):
 class CapturaProgresso(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     item = models.ForeignKey(Item, on_delete=models.CASCADE)
-    chance = models.FloatField(default=0)  
+    chance = models.FloatField(default=0)
     capturado = models.BooleanField(default=False)
     atualizado_em = models.DateTimeField(auto_now=True)
+    conversa_usada = models.BooleanField(default=False)
     foi_ataque_usado = models.BooleanField(default=False)
 
     class Meta:
