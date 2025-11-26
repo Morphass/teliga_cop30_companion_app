@@ -1,6 +1,7 @@
 # backend/events/models.py
 
 from django.db import models
+from django.conf import settings
 
 class Evento(models.Model):
     titulo = models.CharField(max_length=200)
@@ -15,6 +16,9 @@ class Evento(models.Model):
     longitude = models.FloatField()
     icone = models.CharField(max_length=255, blank=True, null=True)
     imagens_extras = models.JSONField(default=list, blank=True)
+    campeao = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='eventos_dominados')
+    item_campeao = models.ForeignKey('captura.MochilaItem', null=True, blank=True, on_delete=models.SET_NULL, related_name='defendendo_eventos')
+
 
     def __str__(self):
         return self.titulo

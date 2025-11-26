@@ -6,15 +6,13 @@ import {
   createWebHashHistory,
 } from 'vue-router'
 import routes from './routes'
-// 1. REMOVER A IMPORTAÇÃO DO PINIA
-// import { useAuthStore } from 'src/stores/auth' 
 
 export default defineRouter(function () {
   const createHistory = process.env.SERVER
     ? createMemoryHistory
     : process.env.VUE_ROUTER_MODE === 'history'
-      ? createWebHistory
-      : createWebHashHistory
+    ? createWebHistory
+    : createWebHashHistory
 
   const Router = createRouter({
     scrollBehavior: () => ({ left: 0, top: 0 }),
@@ -27,8 +25,14 @@ export default defineRouter(function () {
     // 2. BUSCAR DADOS DIRETAMENTE DO LOCALSTORAGE
     const token = localStorage.getItem('user_token')
     const userDataString = localStorage.getItem('user_data')
-    const user = userDataString ? JSON.parse(userDataString) : null
-    
+
+    // **** LINHA CORRIGIDA ****
+    // Verifica se a string não é nula E não é a palavra "undefined"
+    const user = (userDataString && userDataString !== 'undefined')
+                 ? JSON.parse(userDataString)
+                 : null
+    // **** FIM DA CORREÇÃO ****
+
     const isAuthenticated = !!token
 
     // 3. VERIFICAR SE A ROTA EXIGE AUTENTICAÇÃO
@@ -41,7 +45,7 @@ export default defineRouter(function () {
     // (o campo is_staff vem dos dados do usuário salvos no localStorage)
     if (to.meta.requiresAdmin && (!user || !user.is_staff)) {
       // Se a rota exige admin e o usuário não é staff, redireciona para a home
-      return next('/') 
+      return next('/')
     }
 
     // Se passou por todas as verificações, permite o acesso

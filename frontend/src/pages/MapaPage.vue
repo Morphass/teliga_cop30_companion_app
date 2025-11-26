@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-md green-bg">
+  <q-page class="q-pa-md green-bg map-page-container">
     <div class="q-pa-md flex flex-center">
       <q-card class="main-card">
         <q-card-section class="banner text-center">
@@ -8,62 +8,169 @@
         </q-card-section>
 
         <q-card-section>
-          <q-no-ssr>
-            <l-map
-              v-if="isMounted"
-              ref="mapRef"
-              style="height: 70vh; width: 100%; border-radius: 1rem; overflow: hidden;"
-              :zoom="13"
-              :center="mapCenter"
+          <div class="relative-position">
+
+            <q-no-ssr>
+              <l-map
+                v-if="isMounted"
+                ref="mapRef"
+                style="height: 70vh; width: 100%; border-radius: 1rem; overflow: hidden; position: relative;"
+                :zoom="13"
+                :center="mapCenter"
+              >
+                <l-tile-layer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                />
+
+                <l-marker
+                  v-if="usuarioPos"
+                  :lat-lng="usuarioPos"
+                  :icon="usuarioIcon"
+                >
+                  <l-popup>Você está aqui</l-popup>
+                </l-marker>
+
+                <l-marker
+                  v-for="evento in eventosFixosValidos"
+                  :key="`evento-${evento.id}`"
+                  :lat-lng="[evento.latitude, evento.longitude]"
+                  :icon="getIconeEvento(evento)"
+                  @click="irParaDetalhesEvento(evento.id)"
+                >
+                  <l-popup>
+                    <div class="text-center">
+                      <b>{{ evento.titulo }}</b>
+                      <br />
+                      
+                      <div v-if="evento.nome_campeao">
+                        <span v-if="currentUser && evento.nome_campeao === currentUser.username" class="text-orange-9 text-weight-bold" style="font-size: 0.85em">
+                          🏆 Você domina este local!
+                        </span>
+                        <span v-else class="text-red-8" style="font-size: 0.85em">
+                          ⚔️ Dominado por: {{ evento.nome_campeao }}
+                        </span>
+                      </div>
+                      
+                      <div v-else class="text-green-8" style="font-size: 0.85em">
+                        🏁 Livre para conquistar!
+                      </div>
+                    </div>
+                  </l-popup>
+                </l-marker>
+
+                <l-marker
+                  v-for="item in itensAleatoriosValidos"
+                  :key="`item-${item.id}-${item.latitude}`"
+                  :lat-lng="[item.latitude, item.longitude]"
+                  :icon="getIcon(item.tipo)"
+                  @click="handleItemClick(item)"
+                >
+                  <l-popup>
+                    <b>{{ item.nome }}</b>
+                    <div v-if="item.tipo === 'POC'">
+                      Bônus de Captura: +{{ item.bonus_captura }}%
+                      <br /><small>Clique no item para coletar</small>
+                    </div>
+                    <div v-if="item.tipo === 'ANI' || item.tipo === 'PLA'">
+                      <br /><small>Clique no item para ver detalhes</small>
+                    </div>
+                  </l-popup>
+                </l-marker>
+              </l-map>
+            </q-no-ssr>
+
+            <q-btn 
+              square
+              size="lg"
+              icon="event"
+              color="green-8"
+              @click="eventosDrawerAberto = true"
+              class="botao-eventos"
             >
-              <l-tile-layer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              />
-
-              <l-marker
-                v-if="usuarioPos"
-                :lat-lng="usuarioPos"
-                :icon="usuarioIcon"
+              <q-tooltip>Meus Eventos</q-tooltip>
+              <q-badge 
+                v-if="meusEventos.length > 0" 
+                color="red" 
+                floating
               >
-                <l-popup>Você está aqui</l-popup>
-              </l-marker>
-
-              <l-marker
-                v-for="evento in eventosFixosValidos"
-                :key="`evento-${evento.id}`"
-                :lat-lng="[evento.latitude, evento.longitude]"
-                @click="irParaDetalhesEvento(evento.id)"
-              >
-                <l-popup>{{ evento.titulo }}</l-popup>
-              </l-marker>
-
-              <l-marker
-                v-for="item in itensAleatoriosValidos"
-                :key="`item-${item.id}-${item.latitude}`"
-                :lat-lng="[item.latitude, item.longitude]"
-                :icon="getIcon(item.tipo)"
-                @click="handleItemClick(item)"
-              >
-                <l-popup>
-                  <b>{{ item.nome }}</b>
-                  <div v-if="item.tipo === 'POC'">
-                    Bônus de Captura: +{{ item.bonus_captura }}%
-                    <br /><small>Clique no item para coletar</small>
-                  </div>
-                </l-popup>
-              </l-marker>
-            </l-map>
-          </q-no-ssr>
+                {{ meusEventos.length }}
+              </q-badge>
+            </q-btn>
+            </div>
         </q-card-section>
       </q-card>
     </div>
+
+    <q-dialog
+      v-model="eventosDrawerAberto"
+      position="right"
+    >
+      <q-card style="height: 100%; width: 350px; max-width: 90vw; display: flex; flex-direction: column;">
+        <q-scroll-area class="fit q-pa-md">
+          <div class="row items-center justify-between q-mb-md">
+            <div class="text-h6">Meus Eventos Salvos</div>
+            <q-btn 
+              flat 
+              round 
+              dense 
+              icon="close" 
+              @click="eventosDrawerAberto = false" 
+            />
+          </div>
+          
+          <div v-if="meusEventos.length === 0" class="q-pa-md text-grey-7">
+            Você ainda não salvou nenhum evento.
+          </div>
+
+          <q-card 
+            v-for="captura in meusEventos" 
+            :key="captura.id"
+            class="q-mb-md"
+            flat 
+            bordered
+          >
+            <q-card-section>
+              <div class="row items-center justify-between no-wrap">
+                <div class="text-h6 col-shrink" style="overflow-wrap: break-word;">
+                  {{ captura.evento.titulo }}
+                </div>
+                <q-badge
+                  :color="getStatusEvento(captura.evento.data).color"
+                  :label="getStatusEvento(captura.evento.data).text"
+                  class="q-ml-md"
+                />
+              </div>
+            </q-card-section>
+            
+            <q-card-section class="q-pt-none text-grey-8">
+              <div class="row items-center">
+                <q-icon name="calendar_month" class="q-mr-sm" />
+                <span>{{ formatarData(captura.evento.data) }}</span>
+              </div>
+            </q-card-section>
+
+            <q-separator />
+
+            <q-card-actions align="right">
+              <q-btn 
+                flat 
+                color="primary" 
+                label="Ver Detalhes" 
+                @click="irParaDetalhesEvento(captura.evento.id)"
+              />
+            </q-card-actions>
+          </q-card>
+          
+        </q-scroll-area>
+      </q-card>
+    </q-dialog>
+
   </q-page>
 </template>
 
 <script setup>
 defineOptions({ name: 'MapaPage' })
-
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { LMap, LTileLayer, LMarker, LPopup } from '@vue-leaflet/vue-leaflet'
@@ -71,23 +178,61 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
-
-// Corrige ícones padrão do Leaflet
+import { Geolocation } from '@capacitor/geolocation'
 import iconUrl from 'leaflet/dist/images/marker-icon.png'
 import shadowUrl from 'leaflet/dist/images/marker-shadow.png'
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png'
+
+
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({ iconRetinaUrl, iconUrl, shadowUrl })
+
+const ICON_BLUE = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png';
+const ICON_RED = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png';
+const ICON_GOLD = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png';
+const SHADOW_URL_COLOR = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png';
 
 const router = useRouter()
 const $q = useQuasar()
 const isMounted = ref(false)
 const mapRef = ref(null)
-const mapCenter = ref([-1.4558, -48.4902])
+const mapCenter = ref([-1.4558, -48.4902]) 
 const usuarioPos = ref(null)
-
 const eventosFixos = ref([])
 const itensAleatorios = ref([])
+const eventosDrawerAberto = ref(false)
+const meusEventos = ref([])
+const currentUser = ref(null)
+
+const usuarioIcon = L.icon({
+  iconUrl: '/icons/usuario.png',
+  iconSize: [40, 40],
+  iconAnchor: [20, 40]
+})
+
+const eventosFixosValidos = computed(() => eventosFixos.value.filter(e => e.latitude != null && e.longitude != null))
+const itensAleatoriosValidos = computed(() => itensAleatorios.value.filter(i => i.latitude != null && i.longitude != null))
+
+function getIconeEvento(evento) {
+  let selectedIcon = ICON_BLUE; 
+
+  if (evento.nome_campeao) {
+    if (currentUser.value && evento.nome_campeao === currentUser.value.username) {
+      selectedIcon = ICON_GOLD; 
+    } else {
+      selectedIcon = ICON_RED; 
+    }
+  }
+
+  return L.icon({
+    iconUrl: selectedIcon,
+    shadowUrl: SHADOW_URL_COLOR,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+  });
+}
 
 function getIcon(tipo) {
   const largura = 40;
@@ -100,36 +245,21 @@ function getIcon(tipo) {
   return L.icon({ iconUrl: url, iconSize: [largura, altura], iconAnchor: anchor });
 }
 
-const usuarioIcon = L.icon({
-  iconUrl: '/icons/usuario.png',
-  iconSize: [40, 40],
-  iconAnchor: [20, 40]
-})
-
 function irParaDetalhesEvento(id) {
+  eventosDrawerAberto.value = false
   router.push(`/details/${id}`)
 }
 
-/*
-  Agora: coletarPocao salva **no backend**.
-  Rota esperada: POST /api/capturas/pocoes/  com { pocao_id: <id> }
-  Se o backend usa outro nome de rota/payload, ajuste aqui.
-*/
 async function coletarPocao(pocao) {
   if (!pocao || !pocao.id) {
     $q.notify({ message: 'Poção inválida.', color: 'negative', position: 'top' })
     return
   }
-
   try {
-    // tenta salvar no backend
     await api.post('/api/capturas/pocoes/', { pocao_id: pocao.id })
-
-    // remove o item visível do mapa (coletado)
     itensAleatorios.value = itensAleatorios.value.filter(
       (item) => !(item.id === pocao.id && item.latitude === pocao.latitude)
     );
-
     $q.notify({
       message: `${pocao.nome} coletada e guardada na mochila!`,
       color: 'positive',
@@ -139,88 +269,111 @@ async function coletarPocao(pocao) {
   } catch (err) {
     const status = err?.response?.status
     if (status === 400 || status === 409) {
-      $q.notify({
-        message: `${pocao.nome} já foi coletada.`,
-        color: 'info',
-        icon: 'info',
-        position: 'top'
-      });
+      $q.notify({ message: `${pocao.nome} já foi coletada.`, color: 'info', icon: 'info', position: 'top' });
     } else if (status === 401) {
-      $q.notify({
-        message: 'Você precisa estar logado para coletar poções.',
-        color: 'warning',
-        position: 'top'
-      });
-      // opcional: redirecionar para login
-      // router.push('/login')
+      $q.notify({ message: 'Você precisa estar logado para coletar poções.', color: 'warning', position: 'top' });
     } else {
       console.error('Erro ao coletar poção:', err)
-      $q.notify({
-        message: 'Erro ao coletar poção. Tente novamente.',
-        color: 'negative',
-        position: 'top'
-      });
+      $q.notify({ message: 'Erro ao coletar poção. Tente novamente.', color: 'negative', position: 'top' });
     }
   }
 }
 
 function handleItemClick(item) {
-  if (item.tipo === 'POC') {
-    coletarPocao(item);
-  } else {
-    router.push(`/item/${item.id}?lat=${item.latitude}&lon=${item.longitude}`);
-  }
+  if (item.tipo === 'POC') coletarPocao(item);
+  else router.push(`/item/${item.id}?lat=${item.latitude}&lon=${item.longitude}`);
 }
 
-const eventosFixosValidos = computed(() => eventosFixos.value.filter(e => e.latitude != null && e.longitude != null))
-const itensAleatoriosValidos = computed(() => itensAleatorios.value.filter(i => i.latitude != null && i.longitude != null))
-
 async function obterPosicaoUsuario() {
-  if (!navigator.geolocation) return;
-  navigator.geolocation.getCurrentPosition(
-    async (position) => {
-      usuarioPos.value = [position.coords.latitude, position.coords.longitude]
-      mapCenter.value = usuarioPos.value
-      if (mapRef.value?.mapObject) mapRef.value.mapObject.setView(usuarioPos.value, 13)
-      await carregarItensProximos()
-    },
-    (err) => console.error('Erro ao obter localização:', err)
-  )
+  try {
+    const permission = await Geolocation.checkPermissions();
+    if (permission.location !== 'granted') {
+      const request = await Geolocation.requestPermissions();
+      if (request.location !== 'granted') {
+        $q.notify({ message: 'A permissão de localização é essencial para o mapa.', color: 'negative', icon: 'location_off' });
+        return; 
+      }
+    }
+
+    const position = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000 });
+    usuarioPos.value = [position.coords.latitude, position.coords.longitude]
+    mapCenter.value = usuarioPos.value
+    
+    if (mapRef.value?.mapObject) {
+      mapRef.value.mapObject.setView(usuarioPos.value, 13);
+    }
+
+    await carregarItensProximos()
+
+  } catch (err) {
+    console.error('Erro ao obter localização nativa:', err);
+    $q.notify({ message: 'Não foi possível obter sua localização. Verifique se o GPS está ativado.', color: 'negative', icon: 'error' });
+  }
 }
 
 async function carregarItensProximos() {
   if (!usuarioPos.value) return;
   try {
     const response = await api.post('/api/itens_proximos/', {
-        latitude: usuarioPos.value[0],
-        longitude: usuarioPos.value[1],
-        qtd_itens: 10
+      latitude: usuarioPos.value[0],
+      longitude: usuarioPos.value[1],
+      qtd_itens: 10
     })
     itensAleatorios.value = response.data;
-  } catch (err) {
-    console.error('Erro ao carregar itens próximos:', err)
-  }
+  } catch (err) { console.error('Erro ao carregar itens próximos:', err) }
 }
 
 async function carregarEventosFixos() {
   try {
     const response = await api.get('/api/events/')
     eventosFixos.value = response.data
-  } catch (err)
-{
-    console.error('Erro ao carregar eventos fixos:', err)
+  } catch (err) { console.error('Erro ao carregar eventos fixos:', err) }
+}
+
+async function carregarMeusEventos() {
+  try {
+    const response = await api.get('/api/capturas/eventos/')
+    meusEventos.value = response.data
+  } catch (err) { console.error('Erro ao carregar meus eventos:', err) }
+}
+
+function formatarData(dataISO) {
+  if (!dataISO) return '';
+  const data = new Date(dataISO);
+  return data.toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function getStatusEvento(dataISO) {
+  if (!dataISO) return { text: 'Sem data', color: 'grey' };
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0); 
+  const dataEv = new Date(dataISO + 'T00:00:00Z'); 
+  
+  if (dataEv < hoje) {
+    return { text: 'Já passou', color: 'grey-7' };
+  } else {
+    return { text: 'Próximo', color: 'positive' };
   }
 }
 
 onMounted(async () => {
   isMounted.value = true
-  obterPosicaoUsuario()
+  const userData = localStorage.getItem('user_data')
+  if (userData && userData !== 'undefined') {
+    try {
+      currentUser.value = JSON.parse(userData)
+    } catch {
+      // Ignora erro de parse 
+    }
+  }
+
+  await obterPosicaoUsuario() 
   await carregarEventosFixos();
+  await carregarMeusEventos();
 })
 </script>
 
 <style scoped>
-
 .main-card {
   width: 100%;
   max-width: 1000px;
@@ -251,7 +404,21 @@ onMounted(async () => {
   margin: 0;
 }
 
-/* POPUPS DO MAPA */
+.botao-eventos {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  z-index: 1000;
+  width: 50px;
+  height: 50px;
+  border-radius: 10px; 
+  box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .leaflet-popup-content-wrapper {
   background: white;
   color: #333;
