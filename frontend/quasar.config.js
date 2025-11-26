@@ -105,6 +105,7 @@ export default defineConfig((/* ctx */) => {
       // Quasar plugins
       plugins: [
         'Notify',
+        "Loading",
         'Dialog'
       ],
     },

@@ -1,22 +1,12 @@
 <template>
   <q-page class="container q-pa-md position-relative green-bg">
-    <!-- CARD PRINCIPAL -->
     <q-card class="main-card">
       <q-card-section class="row no-wrap">
-        <!-- IMAGEM -->
         <div class="col-7 card-image relative-position">
           <q-img :src="item?.imagem" class="main-img" />
-          <transition name="fade">
-            <img v-if="mostrarBonk" src="/effects/bonk.gif" class="bonk-animacao" />
-          </transition>
-          <transition name="fade">
-            <img v-if="mostrarOvo" src="/effects/ovo.gif" class="ovo-animacao" />
-          </transition>
         </div>
 
-        <!-- AÇÕES -->
         <q-card-section class="col-5 actions-col column" style="height: 100%; align-items: flex-start;">
-          <!-- Título no topo -->
           <div class="row items-center q-mb-md">
             <q-icon name="backpack" color="green-8" size="28px" class="q-mr-sm" />
             <span class="text-h5" style="color:#166534; font-weight: 700;">Capturar</span>
@@ -24,8 +14,8 @@
 
           <div style="flex-grow:1;"></div>
 
-          <!-- Botões dinâmicos vindos do banco -->
           <div class="column full-width">
+
             <q-btn
               v-for="habilidade in habilidades"
               :key="habilidade.id"
@@ -41,11 +31,14 @@
                 </span>
               </template>
             </q-btn>
+
+            <q-separator spaced />
+
             <q-btn
               label="Conversar"
               color="green"
               icon="chat"
-              class="full-width q-mb-sm"
+              class="full-width q-mt-sm"
               @click="abrirConversa"
               :disable="conversaUsada"
               :class="{ 'bg-grey-5': conversaUsada }"
@@ -70,7 +63,6 @@
         </q-card-section>
       </q-card-section>
 
-      <!-- BARRA DE PROGRESSO -->
       <q-card-section class="q-mt-md">
         <q-linear-progress
           :value="chance / 100"
@@ -79,7 +71,7 @@
           size="30px"
           class="progress-bar"
         >
-          <div class="progress-text">{{ chance }}%</div>
+          <div class="progress-text">{{ Math.round(chance) }}%</div>
         </q-linear-progress>
 
         <q-btn
@@ -92,7 +84,6 @@
       </q-card-section>
     </q-card>
 
-    <!-- DIALOGO DE PERGUNTA -->
     <q-dialog v-model="mostrarDialogo" persistent>
       <q-card style="min-width: 400px">
         <q-card-section>
@@ -129,11 +120,33 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <q-dialog v-model="mostrarSucessoRPG" persistent transition-show="scale" transition-hide="scale">
+      <q-card class="bg-green-1 text-center q-pa-lg" style="width: 300px">
+        <q-icon name="stars" color="orange" size="50px" class="q-mb-md" />
+        <div class="text-h5 text-green-9 text-weight-bold">Sucesso!</div>
+        <div class="text-subtitle1 text-grey-8 q-mb-lg">{{ item?.nome }} foi capturado.</div>
+
+        <div class="row justify-center q-gutter-sm q-mb-lg">
+          <q-badge color="red" class="q-pa-sm">
+            <q-icon name="favorite" size="xs" class="q-mr-xs" />
+            Vida {{ statsGanhos.bonus_vida }}
+          </q-badge>
+          <q-badge color="blue" class="q-pa-sm">
+            <q-icon name="flash_on" size="xs" class="q-mr-xs" />
+            Atq {{ statsGanhos.bonus_ataque }}
+          </q-badge>
+        </div>
+
+        <q-btn label="Continuar" color="green-8" class="full-width" @click="finalizarCaptura" />
+      </q-card>
+    </q-dialog>
+
   </q-page>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
@@ -141,76 +154,48 @@ import { useQuasar } from 'quasar'
 const $q = useQuasar()
 const route = useRoute()
 const router = useRouter()
-
-// Dados do item e chance
 const item = ref(null)
 const chance = ref(0)
-
-// lista de habilidades (vinda do backend)
-const habilidades = ref([])
-
-// Animações
-const mostrarBonk = ref(false)
-const mostrarOvo = ref(false)
-
-// Diálogo de perguntas
 const mostrarDialogo = ref(false)
+const mostrarSucessoRPG = ref(false)
+const statsGanhos = ref({ bonus_vida: '+0', bonus_ataque: '+0' })
 const questao = ref(null)
 const resultado = ref(null)
 const opcoes = ref({})
 const conversaUsada = ref(false)
+const habilidades = ref([])
 
-/* ============================
-      FUNÇÃO load()
-============================= */
 async function load(itemId) {
   try {
     const [resItem, resProgresso] = await Promise.all([
       api.get(`/api/item/${itemId}/`),
-      api.get(`/api/captura/${itemId}/`) // <-- CORRETO
+      api.get(`/api/captura/${itemId}/`)
     ])
 
     item.value = resItem.data
-    chance.value = resProgresso.data.chance
+    chance.value = resProgresso.data.chance ?? 0
     conversaUsada.value = !!resProgresso.data.conversa_usada
 
-    // Busca habilidades
     try {
       const resHabs = await api.get(`/api/habilidades/${itemId}/habilidades/`)
       habilidades.value = resHabs.data
-    } catch (err) {
+    } catch {
       habilidades.value = []
-      console.warn("Erro ao buscar habilidades", err)
     }
-
-  } catch (e) {
-    console.error("Erro ao carregar item:", e)
+  } catch (err) {
+    console.error("Erro ao carregar item:", err)
     $q.notify({ type: 'negative', message: 'Erro ao carregar dados do item.' })
   }
 }
 
-/* ============================
-  Carrega ao entrar na página
-============================= */
-onMounted(() => {
-  const itemId = route.params.id
-  if (itemId) load(itemId)
-})
+const itemId = route.params.id
+if (itemId) load(itemId)
 
-/* ============================
-  Recarrega quando trocar de item
-============================= */
-watch(() => route.params.id, (newId) => {
-  if (newId) load(newId)
-})
 
-/* ============================
-      EXECUTAR HABILIDADE
-============================= */
-async function executarAcao(habilidade_id) {
+async function executarAcao(payload) {
   try {
-    const itemId = route.params.id
-    const res = await api.post(`/api/captura/${itemId}/`, { habilidade_id })
+    const id = route.params.id
+    const res = await api.post(`/api/captura/${id}/`, payload)
 
     if (res.data.chance !== undefined) {
       chance.value = res.data.chance
@@ -221,15 +206,20 @@ async function executarAcao(habilidade_id) {
       const idx = habilidades.value.findIndex(x => x.id === h.id)
       if (idx !== -1) habilidades.value[idx] = { ...habilidades.value[idx], ...h }
     }
+
+    if (res.data.conversa_usada !== undefined) {
+      conversaUsada.value = !!res.data.conversa_usada
+    }
+
+    return res.data
   } catch (err) {
-    const msg = err?.response?.data?.detail || 'Erro ao executar ação'
+    const msg = err?.response?.data?.detail || err?.response?.data?.error || 'Erro ao executar ação'
     $q.notify({ type: 'negative', message: msg })
+    throw err
   }
 }
 
-/* ============================
-        USAR HABILIDADE
-============================= */
+
 async function usarHabilidade(h) {
   if (h.quantidade === 0) {
     $q.notify({ type: 'negative', message: 'Sem usos restantes dessa habilidade.' })
@@ -298,22 +288,14 @@ async function usarOvo() {
 
 /* ============================
           CAPTURAR
-============================= */
-async function capturar() {
   try {
-    const itemId = route.params.id
-    await api.post(`/api/captura/${itemId}/confirmar/`)
-    chance.value = 100
-    $q.notify({ type: 'positive', message: 'Item capturado!' })
-    router.push({ name: 'mapa' })
+    await executarAcao({ habilidade_id: h.id })
   } catch {
-    $q.notify({ type: 'negative', message: 'Erro ao executar ação' })
+    // ignorado
   }
 }
 
-/* ============================
-          CONVERSAR
-============================= */
+
 async function abrirConversa() {
   if (conversaUsada.value) {
     $q.notify({ type: 'warning', message: 'Você já conversou com este item.' })
@@ -321,41 +303,32 @@ async function abrirConversa() {
   }
 
   try {
-    const itemId = route.params.id
-    const res = await api.get(`/api/questao/item/${itemId}/`) // <-- CORRETO: pega a pergunta
-
+    const id = route.params.id
+    const res = await api.get(`/api/questao/item/${id}/`)
     questao.value = res.data
     opcoes.value = {
       A: res.data.escolha_a,
       B: res.data.escolha_b,
       C: res.data.escolha_c
     }
-
     mostrarDialogo.value = true
     resultado.value = null
-
   } catch (err) {
     console.error(err)
     $q.notify({ type: 'negative', message: 'Erro ao buscar questão' })
   }
 }
 
-/* ============================
-        RESPONDER QUESTÃO
-============================= */
 async function responder(letra) {
   try {
-    const res = await api.post(`/api/questao/${questao.value.id}/`, {
-      resposta: letra
-    })
-
+    const res = await api.post(`/api/questao/${questao.value.id}/`, { resposta: letra })
     resultado.value = res.data
 
-    if (res.data.chance !== undefined && res.data.chance !== null) {
+    if (res.data.chance !== undefined) {
       chance.value = res.data.chance
     }
 
-    conversaUsada.value = true // trava o botão conversar
+    conversaUsada.value = true
 
   } catch (err) {
     if (err.response?.data?.error === "Você já conversou com este item.") {
@@ -374,6 +347,35 @@ function fecharDialogo() {
   mostrarDialogo.value = false
   resultado.value = null
 }
+
+
+async function capturar() {
+  try {
+    const id = route.params.id
+    const res = await api.post(`/api/captura/${id}/confirmar/`)
+
+    if (res.data.bonus_vida || res.data.bonus_ataque) {
+      statsGanhos.value = {
+        bonus_vida: res.data.bonus_vida ?? '+0',
+        bonus_ataque: res.data.bonus_ataque ?? '+0'
+      }
+      mostrarSucessoRPG.value = true
+      chance.value = 0
+    } else {
+      $q.notify({ type: 'positive', message: res.data.mensagem || 'Item capturado!' })
+      router.push({ name: 'mapa' })
+    }
+  } catch (err) {
+    console.error("Erro ao capturar:", err)
+    const msg = err?.response?.data?.error || 'Erro ao confirmar a captura'
+    $q.notify({ type: 'negative', message: msg })
+  }
+}
+
+function finalizarCaptura() {
+  mostrarSucessoRPG.value = false
+  router.push({ name: 'mapa' })
+}
 </script>
 
 <style scoped>
@@ -389,17 +391,7 @@ function fecharDialogo() {
 
 .card-image { position: relative; max-height: 400px; }
 .main-img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
-
-.bonk-animacao, .ovo-animacao {
-  position:absolute; top:50%; left:50%;
-  transform:translate(-50%,-50%);
-  width:150px; pointer-events:none;
-}
-.fade-enter-active,.fade-leave-active { transition: opacity .5s; }
-.fade-enter-from,.fade-leave-to { opacity:0; }
-
 .actions-col { display:flex; flex-direction:column; gap:8px; align-items:center; justify-content:center; }
-
 .progress-bar { position:relative; margin-top:12px; height:40px; }
 .progress-text { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-weight:bold; color:rgb(119, 119, 119); }
 .full-width { width:100%; }

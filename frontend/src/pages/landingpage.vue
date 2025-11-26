@@ -245,7 +245,7 @@ onMounted(async () => {
 }
 
 .title{ font-size:clamp(32px,4.6vw,52px); line-height:1.1; color:#1b2a6b; margin:6px 0 10px; font-weight: 800; }
-.title span{ color: rgb(9, 126, 38); padding-left: 1rem; display: inline; } /* pedido */
+.title span{ color: rgb(9, 126, 38); padding-left: 0.01rem; display: inline; } 
 .subtitle{ font-size:18px; color:#0b3b22; opacity:.85; margin-bottom:18px }
 .cta-row{ display:flex; gap:12px; flex-wrap:wrap }
 .copy-col :deep(.q-btn){ font-weight:800 }
