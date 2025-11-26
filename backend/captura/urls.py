@@ -3,7 +3,7 @@ from .views import (
     MochilaItemListCreateView, MochilaEventoListCreateView, MochilaPocaoListCreateView,
     QuestaoView, QuestaoAleatoriaView, QuestaoPorItemView,
     CapturaView, ConfirmarCapturaView, ResetConversaDebugView, MochilaFaunaListView,
-    MochilaFloraListView, MochilaItensListView,
+    MochilaFloraListView, MochilaItensListView, SocoView, UsarOvoView,
 )
 
 urlpatterns = [
@@ -18,6 +18,14 @@ urlpatterns = [
     path('questao/<int:pk>/', QuestaoView.as_view(), name='questao_view'),
     path('questao/aleatoria/', QuestaoAleatoriaView.as_view(), name='questao-aleatoria'),
     path('questao/item/<int:item_id>/', QuestaoPorItemView.as_view(), name='questao-por-item'),
+    
+    # habilidades
+    path('captura/<int:item_id>/soco/', SocoView.as_view(), name='captura-soco'),
+    path('captura/<int:item_id>/usar_ovo/', UsarOvoView.as_view(), name='usar_ovo'),
+
+    #debug
+    #reset de conversa
+    path("debug/reset-conversa/", ResetConversaDebugView.as_view()),
 
     # debug
     path("debug/reset-conversa/", ResetConversaDebugView.as_view()),
