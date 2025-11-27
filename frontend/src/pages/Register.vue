@@ -17,29 +17,14 @@
 
           <q-input outlined label="Nome de usuário" dense class="q-mb-md pixel-field" v-model="username" />
 
-          <div class="q-mb-sm text-dark">Data de nascimento</div>
-          <div class="row q-col-gutter-sm q-mb-md">
-            <q-input outlined label="Dia" dense class="col pixel-field" v-model="day" />
-            <q-input outlined label="Mês" dense class="col pixel-field" v-model="month" />
-            <q-input outlined label="Ano" dense class="col pixel-field" v-model="year" />
-          </div>
-
-          <div class="q-mb-sm text-dark">Gênero</div>
-          <div class="row justify-around q-mb-md pixel-radios">
-            <q-radio dense v-model="gender" val="masculino" label="Masculino" />
-            <q-radio dense v-model="gender" val="feminino" label="Feminino" />
-            <q-radio dense v-model="gender" val="outro" label="Outro" />
-          </div>
-
           <div>
             <q-input outlined label="Email" dense class="q-mb-md pixel-field" v-model="email" />
-            <q-input outlined label="Telefone" dense class="q-mb-md pixel-field" v-model="telefone" />
           </div>
 
           <q-input outlined type="password" label="Crie uma Senha" dense class="q-mb-md pixel-field" v-model="password" />
           <q-input outlined type="password" label="Confirme sua Senha" dense class="q-mb-md pixel-field" v-model="confirmPassword" />
 
-          <div class="flex flex-center q-mt-md">
+          <div class="flex flex-center">
             <q-btn
               rounded
               label="Cadastre-se"
@@ -48,10 +33,6 @@
               @click="handleRegister"
               text-color="black"
             />
-          </div>
-
-          <div class="text-center q-mt-md">
-            <a href="#/login" class="login-link pixel-link">Já possui uma conta?</a>
           </div>
         </q-card-section>
       </q-card>
