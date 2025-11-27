@@ -32,28 +32,6 @@
               <div class="col text-center text-caption text-dark">entrar com</div>
               <div class="col-5"><q-separator /></div>
             </div>
-            <div class="row justify-center q-gutter-sm q-mt-sm">
-              <q-btn
-                round flat size="lg"
-                class="bg-white shadow-2 pixel-icon-btn"
-                type="a" :href="URL_LOGIN_GOOGLE" aria-label="Entrar com Google"
-              >
-                <img
-                  src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/google/google-original.svg"
-                  alt="Google" width="22" height="22" class="pixel-icon"
-                />
-              </q-btn>
-              <q-btn
-                round flat size="lg"
-                class="bg-white shadow-2 pixel-icon-btn"
-                type="a" :href="URL_LOGIN_FACEBOOK" aria-label="Entrar com Facebook"
-              >
-                <img
-                  src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/facebook/facebook-original.svg"
-                  alt="Facebook" width="22" height="22" class="pixel-icon"
-                />
-              </q-btn>
-            </div>
           </q-card-section>
 
           <q-card-section class="q-pt-none">
@@ -85,9 +63,6 @@
               <div class="row items-center q-mt-sm q-mb-md">
                 <div class="col">
                   <q-toggle v-model="remember" label="Lembrar de mim" dense class="pixel-toggle" />
-                </div>
-                <div class="col-auto">
-                  <q-btn flat dense class="link pixel-link" @click="goForgot">Esqueceu a senha?</q-btn>
                 </div>
               </div>
 
@@ -132,22 +107,9 @@ const isLoading = ref(false)
 const capsOn = ref(false)
 const remember = ref(true)
 
-const URL_LOGIN_GOOGLE = `${import.meta.env.VITE_API_URL}/auth/google`
-const URL_LOGIN_FACEBOOK = `${import.meta.env.VITE_API_URL}/auth/facebook`
-
 function onPassKey (e) {
   const getter = e.getModifierState || (() => false)
   capsOn.value = getter.call(e, 'CapsLock')
-}
-
-function goForgot () {
-  const target = '/password/reset'
-  const resolved = router.resolve(target)
-  if (resolved.matched.length) {
-    router.push(target)
-  } else {
-    $q.notify({ color: 'info', message: 'Recuperação de senha indisponível no momento.' })
-  }
 }
 
 async function handleLogin () {

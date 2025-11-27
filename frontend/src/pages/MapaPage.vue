@@ -2,11 +2,6 @@
   <q-page class="q-pa-md green-bg map-page-container">
     <div class="q-pa-md flex flex-center">
       <q-card class="main-card">
-        <q-card-section class="banner text-center">
-          <h1>Te Liga!</h1>
-          <p>Bem-vindo(a) ao mapa de eventos!</p>
-        </q-card-section>
-
         <q-card-section>
           <div class="relative-position">
 

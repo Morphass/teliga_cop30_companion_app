@@ -285,4 +285,8 @@ onMounted(async () => {
 .leaflet-popup-tip{ background:#fff }
 b{ color:var(--green-700); font-weight:700 }
 small{ color:#777; font-size:.8rem }
+h2 {
+  color: #1b2a6b !important;
+  font-weight: 400;
+}
 </style>

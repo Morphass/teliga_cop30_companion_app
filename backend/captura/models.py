@@ -87,8 +87,8 @@ class CapturaProgresso(models.Model):
         return self.chance
 
     def mudar_chance(self, valor):
-        """Modifica a chance sem ultrapassar 0–1."""
-        self.chance = max(0, min(1, self.chance + valor))
+        """Modifica a chance sem ultrapassar 0–100."""
+        self.chance = max(0, min(100, self.chance + valor))
         self.save()
         return self.chance
 
