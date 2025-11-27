@@ -25,7 +25,7 @@
               label="Capturar"
               icon="pets"
               class="q-mt-lg"
-              :to="{ name: 'PaginaDeCaptura', params: { id: item.id } }"
+              @click="verificarLoginAntesDeAcao('capturar')"
             />
 
             <q-btn
@@ -35,7 +35,7 @@
               icon="grass"
               class="q-mt-lg"
               :loading="isColetando"
-              @click="coletarPlanta"
+              @click="verificarLoginAntesDeAcao('coletar')"
             />
             
           </div>
@@ -76,6 +76,28 @@ const item = ref(null)
 const isLoading = ref(true)
 const isColetando = ref(false)
 
+function verificarLoginAntesDeAcao(acao) {
+  const token = localStorage.getItem('user_token')
+  
+  if (!token) {
+    $q.notify({
+      type: 'negative',
+      message: 'Você precisa fazer login para realizar esta ação.',
+      icon: 'lock',
+      position: 'top',
+      actions: [
+        { label: 'Login', color: 'white', handler: () => router.push('/login') }
+      ]
+    })
+    return
+  }
+
+  if (acao === 'capturar') {
+    router.push({ name: 'PaginaDeCaptura', params: { id: item.value.id } })
+  } else if (acao === 'coletar') {
+    coletarPlanta()
+  }
+}
 
 onMounted(async () => {
   try {

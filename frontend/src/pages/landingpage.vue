@@ -27,10 +27,27 @@
           </h1>
           
           <div class="cta-row">
-            <q-btn class="cta primary" unelevated rounded size="lg" @click="scrollTo('#sobre')">
+            <q-btn 
+              class="cta primary" 
+              unelevated 
+              rounded 
+              size="lg" 
+              icon="map" 
+              label="Ir para o Mapa" 
+              @click="irParaMapa" 
+            />
+
+            <q-btn class="cta ghost" rounded size="lg" @click="scrollTo('#sobre')">
               Conheça o Projeto
             </q-btn>
-            <q-btn class="cta ghost" rounded size="lg" @click="router.push(CTA_ROUTE)">
+
+            <q-btn 
+              v-if="!isLogged" 
+              class="cta ghost" 
+              rounded 
+              size="lg" 
+              @click="router.push(CTA_ROUTE)"
+            >
               Criar Conta
             </q-btn>
           </div>
@@ -44,8 +61,8 @@
         <div class="about-text">
           <h2>Sobre o Projeto</h2>
           <p>
-            O app visa construir uma melhor experiência para turistas e interessados durante o evento da COP30, servindo como um companion com várias funções e interações com a cidade, o evento e a cultura local.animais
-            Através de sistemas integrados como uma lista estilo Pokédex com peculiaridades da região (, plantas e pautas da COP30)
+            O app visa construir uma melhor experiência para turistas e interessados durante o evento da COP30, servindo como um companion com várias funções e interações com a cidade, o evento e a cultura local.
+            Através de sistemas integrados como uma lista estilo Pokédex com peculiaridades da região (animais, plantas e pautas da COP30).
           </p>
         </div>
       </div>
@@ -77,14 +94,15 @@
 <script setup>
 defineOptions({ name: 'LandingTeLiga' })
 
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from 'boot/axios'
+import { useQuasar } from 'quasar'
 
 const CTA_ROUTE = '/register'
-
-
 const router = useRouter()
+const $q = useQuasar()
+
 const isMounted = ref(false)
 const mapRef = ref(null)
 const mapCenter = ref([-1.4558, -48.4902])
@@ -93,6 +111,22 @@ const usuarioPos = ref(null)
 const eventosFixos = ref([])
 const itensAleatorios = ref([])
 
+const isLogged = computed(() => !!localStorage.getItem('user_token'))
+
+function irParaMapa() {
+  if (isLogged.value) {
+    router.push('/mapa')
+  } else {
+    $q.notify({
+      type: 'warning',
+      message: 'Você precisa fazer login para acessar o mapa!',
+      position: 'top',
+      actions: [
+        { label: 'Login', color: 'white', handler: () => router.push('/login') }
+      ]
+    })
+  }
+}
 
 async function obterPosicaoUsuario () {
   if (!navigator.geolocation) return

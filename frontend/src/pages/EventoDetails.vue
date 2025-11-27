@@ -159,13 +159,14 @@
 
 <script setup>
 import { ref, onMounted, nextTick, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { api } from 'boot/axios'
 
 const route = useRoute()
+const router = useRouter()
 const $q = useQuasar()
 const backendUrl = 'http://127.0.0.1:8000'
 const evento = ref(null)
@@ -185,6 +186,20 @@ const isChampion = computed(() => {
 })
  
 async function guardarNaMochila() {
+  const token = localStorage.getItem('user_token')
+  if (!token) {
+    $q.notify({
+      type: 'negative',
+      message: 'Você precisa fazer login para guardar eventos.',
+      icon: 'lock',
+      position: 'top',
+      actions: [
+        { label: 'Entrar', color: 'white', handler: () => router.push('/login') }
+      ]
+    })
+    return
+  }
+
   if (!evento.value || !evento.value.id) {
     $q.notify({ type: 'negative', message: 'Evento inválido.' })
     return
@@ -205,6 +220,20 @@ async function guardarNaMochila() {
 }
 
 async function abrirModalSelecao() {
+  const token = localStorage.getItem('user_token')
+  if (!token) {
+    $q.notify({
+      type: 'negative',
+      message: 'Você precisa estar logado para batalhar.',
+      icon: 'lock',
+      position: 'top',
+      actions: [
+        { label: 'Entrar', color: 'white', handler: () => router.push('/login') }
+      ]
+    })
+    return
+  }
+
   try {
     $q.loading.show({ message: 'Preparando para a batalha...' })
     const response = await api.get('/api/capturas/fauna/')
@@ -212,7 +241,7 @@ async function abrirModalSelecao() {
     modalBatalha.value = true
   } catch (err) {
     console.error('Erro ao carregar mochila:', err)
-    $q.notify({ type: 'negative', message: 'Você precisa estar logado para batalhar.' })
+    $q.notify({ type: 'negative', message: 'Erro ao buscar dados de batalha.' })
   } finally {
     $q.loading.hide()
   }

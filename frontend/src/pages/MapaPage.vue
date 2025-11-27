@@ -275,6 +275,20 @@ async function coletarPocao(pocao) {
 }
 
 function handleItemClick(item) {
+  const token = localStorage.getItem('user_token')
+  if (!token) {
+    $q.notify({
+      type: 'negative',
+      icon: 'lock',
+      message: 'Você precisa estar logado para interagir com itens!',
+      position: 'top',
+      actions: [
+        { label: 'Entrar', color: 'white', handler: () => router.push('/login') }
+      ]
+    })
+    return 
+  }
+
   if (item.tipo === 'POC') coletarPocao(item);
   else router.push(`/item/${item.id}?lat=${item.latitude}&lon=${item.longitude}`);
 }
