@@ -4,6 +4,8 @@
       <q-card-section class="row no-wrap">
         <div class="col-7 card-image relative-position">
           <q-img :src="item?.imagem" class="main-img" />
+          <img v-if="mostrarBonk" src="/effects/bonk.gif" class="animacao-bonk" />
+          <img v-if="mostrarOvo" src="/effects/ovo.gif" class="animacao-ovo" />
         </div>
 
         <q-card-section class="col-5 actions-col column" style="height: 100%; align-items: flex-start;">
@@ -38,11 +40,12 @@
               label="Conversar"
               color="green"
               icon="chat"
-              class="full-width q-mt-sm"
+              class="full-width q-mb-sm"
               @click="abrirConversa"
               :disable="conversaUsada"
               :class="{ 'bg-grey-5': conversaUsada }"
             />
+
             <q-btn
               label="Soco"
               icon="sports_mma"
@@ -146,7 +149,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
@@ -154,48 +157,78 @@ import { useQuasar } from 'quasar'
 const $q = useQuasar()
 const route = useRoute()
 const router = useRouter()
+
+// Dados do item e chance
 const item = ref(null)
 const chance = ref(0)
-const mostrarDialogo = ref(false)
 const mostrarSucessoRPG = ref(false)
 const statsGanhos = ref({ bonus_vida: '+0', bonus_ataque: '+0' })
+
+// lista de habilidades (vinda do backend)
+const habilidades = ref([])
+
+// Animações
+const mostrarBonk = ref(false)
+const mostrarOvo = ref(false)
+
+// Diálogo de perguntas
+const mostrarDialogo = ref(false)
 const questao = ref(null)
 const resultado = ref(null)
 const opcoes = ref({})
 const conversaUsada = ref(false)
-const habilidades = ref([])
 
+/* ============================
+      FUNÇÃO load()
+============================= */
 async function load(itemId) {
   try {
     const [resItem, resProgresso] = await Promise.all([
       api.get(`/api/item/${itemId}/`),
-      api.get(`/api/captura/${itemId}/`)
+      api.get(`/api/captura/${itemId}/`) // <-- CORRETO
     ])
 
     item.value = resItem.data
-    chance.value = resProgresso.data.chance ?? 0
+    chance.value = resProgresso.data.chance
     conversaUsada.value = !!resProgresso.data.conversa_usada
 
+    // Busca habilidades
     try {
       const resHabs = await api.get(`/api/habilidades/${itemId}/habilidades/`)
       habilidades.value = resHabs.data
-    } catch {
+    } catch (err) {
       habilidades.value = []
+      console.warn("Erro ao buscar habilidades", err)
     }
-  } catch (err) {
-    console.error("Erro ao carregar item:", err)
+
+  } catch (e) {
+    console.error("Erro ao carregar item:", e)
     $q.notify({ type: 'negative', message: 'Erro ao carregar dados do item.' })
   }
 }
 
-const itemId = route.params.id
-if (itemId) load(itemId)
+/* ============================
+  Carrega ao entrar na página
+============================= */
+onMounted(() => {
+  const itemId = route.params.id
+  if (itemId) load(itemId)
+})
 
+/* ============================
+  Recarrega quando trocar de item
+============================= */
+watch(() => route.params.id, (newId) => {
+  if (newId) load(newId)
+})
 
-async function executarAcao(payload) {
+/* ============================
+      EXECUTAR HABILIDADE
+============================= */
+async function executarAcao(habilidade_id) {
   try {
-    const id = route.params.id
-    const res = await api.post(`/api/captura/${id}/`, payload)
+    const itemId = route.params.id
+    const res = await api.post(`/api/captura/${itemId}/`, { habilidade_id })
 
     if (res.data.chance !== undefined) {
       chance.value = res.data.chance
@@ -206,20 +239,15 @@ async function executarAcao(payload) {
       const idx = habilidades.value.findIndex(x => x.id === h.id)
       if (idx !== -1) habilidades.value[idx] = { ...habilidades.value[idx], ...h }
     }
-
-    if (res.data.conversa_usada !== undefined) {
-      conversaUsada.value = !!res.data.conversa_usada
-    }
-
-    return res.data
   } catch (err) {
-    const msg = err?.response?.data?.detail || err?.response?.data?.error || 'Erro ao executar ação'
+    const msg = err?.response?.data?.detail || 'Erro ao executar ação'
     $q.notify({ type: 'negative', message: msg })
-    throw err
   }
 }
 
-
+/* ============================
+        USAR HABILIDADE
+============================= */
 async function usarHabilidade(h) {
   if (h.quantidade === 0) {
     $q.notify({ type: 'negative', message: 'Sem usos restantes dessa habilidade.' })
@@ -251,9 +279,13 @@ async function usarSoco() {
       message: res.data.mensagem
     })
 
-    // animação opcional
+    // animação 
     mostrarBonk.value = true
     setTimeout(() => (mostrarBonk.value = false), 600)
+
+    // Som
+    const audio = new Audio('/sounds/bonk.mp3')
+    audio.play().catch(() => {})
 
   } catch (err) {
     console.error(err)
@@ -276,6 +308,10 @@ async function usarOvo() {
     mostrarOvo.value = true
     setTimeout(() => (mostrarOvo.value = false), 1500)
 
+    // Som
+    const audio = new Audio('/sounds/gnomed.mp3')
+    audio.play().catch(() => {})
+
     // Notificação
     const mensagem = res.data.sucesso ? 'Sucesso! +15%' : 'O ovo quebrou! -5%'
     $q.notify({ type: res.data.sucesso ? 'positive' : 'negative', message: mensagem })
@@ -288,14 +324,38 @@ async function usarOvo() {
 
 /* ============================
           CAPTURAR
+============================= */
+async function capturar() {
   try {
-    await executarAcao({ habilidade_id: h.id })
-  } catch {
-    // ignorado
+    const id = route.params.id
+    const res = await api.post(`/api/captura/${id}/confirmar/`)
+
+    // Se o endpoint retornar bônus, mostra o popup com os valores
+    const hasBonus = (res.data && (res.data.bonus_vida !== undefined || res.data.bonus_ataque !== undefined))
+
+    if (hasBonus) {
+      statsGanhos.value = {
+        bonus_vida: res.data.bonus_vida ?? '+0',
+        bonus_ataque: res.data.bonus_ataque ?? '+0'
+      }
+      // mostra o diálogo de sucesso 
+      mostrarSucessoRPG.value = true
+      chance.value = 0
+    } else {
+      $q.notify({ type: 'positive', message: res.data.mensagem || 'Item capturado!' })
+      router.push({ name: 'mapa' })
+    }
+  } catch (err) {
+    console.error("Erro ao capturar:", err)
+    const msg = err?.response?.data?.error || 'Erro ao confirmar a captura'
+    $q.notify({ type: 'negative', message: msg })
   }
 }
 
 
+/* ============================
+          CONVERSAR
+============================= */
 async function abrirConversa() {
   if (conversaUsada.value) {
     $q.notify({ type: 'warning', message: 'Você já conversou com este item.' })
@@ -303,32 +363,45 @@ async function abrirConversa() {
   }
 
   try {
-    const id = route.params.id
-    const res = await api.get(`/api/questao/item/${id}/`)
+    const itemId = route.params.id
+    const res = await api.get(`/api/questao/item/${itemId}/`) // <-- CORRETO: pega a pergunta
+
     questao.value = res.data
     opcoes.value = {
       A: res.data.escolha_a,
       B: res.data.escolha_b,
       C: res.data.escolha_c
     }
+
     mostrarDialogo.value = true
     resultado.value = null
+
   } catch (err) {
     console.error(err)
     $q.notify({ type: 'negative', message: 'Erro ao buscar questão' })
   }
 }
 
+function finalizarCaptura() {
+  mostrarSucessoRPG.value = false
+  router.push({ name: 'mapa' })
+}
+/* ============================
+        RESPONDER QUESTÃO
+============================= */
 async function responder(letra) {
   try {
-    const res = await api.post(`/api/questao/${questao.value.id}/`, { resposta: letra })
+    const res = await api.post(`/api/questao/${questao.value.id}/`, {
+      resposta: letra
+    })
+
     resultado.value = res.data
 
-    if (res.data.chance !== undefined) {
+    if (res.data.chance !== undefined && res.data.chance !== null) {
       chance.value = res.data.chance
     }
 
-    conversaUsada.value = true
+    conversaUsada.value = true // trava o botão conversar
 
   } catch (err) {
     if (err.response?.data?.error === "Você já conversou com este item.") {
@@ -347,35 +420,6 @@ function fecharDialogo() {
   mostrarDialogo.value = false
   resultado.value = null
 }
-
-
-async function capturar() {
-  try {
-    const id = route.params.id
-    const res = await api.post(`/api/captura/${id}/confirmar/`)
-
-    if (res.data.bonus_vida || res.data.bonus_ataque) {
-      statsGanhos.value = {
-        bonus_vida: res.data.bonus_vida ?? '+0',
-        bonus_ataque: res.data.bonus_ataque ?? '+0'
-      }
-      mostrarSucessoRPG.value = true
-      chance.value = 0
-    } else {
-      $q.notify({ type: 'positive', message: res.data.mensagem || 'Item capturado!' })
-      router.push({ name: 'mapa' })
-    }
-  } catch (err) {
-    console.error("Erro ao capturar:", err)
-    const msg = err?.response?.data?.error || 'Erro ao confirmar a captura'
-    $q.notify({ type: 'negative', message: msg })
-  }
-}
-
-function finalizarCaptura() {
-  mostrarSucessoRPG.value = false
-  router.push({ name: 'mapa' })
-}
 </script>
 
 <style scoped>
@@ -387,6 +431,17 @@ function finalizarCaptura() {
   background-color: #ffffff;
   display: flex;
   flex-direction: column;
+}
+
+.animacao-bonk,
+.animacao-ovo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 180px;
+  z-index: 999;
+  pointer-events: none;  /* impede de bloquear cliques */
 }
 
 .card-image { position: relative; max-height: 400px; }
